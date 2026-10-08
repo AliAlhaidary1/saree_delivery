@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/app_controller.dart';
 import 'features/screens.dart';
+import 'features/akhdimni_screens.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 
@@ -22,13 +23,30 @@ GoRouter buildRouter() {
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(
         path: '/order/:id',
+        builder: (_, s) => CollectionOrderScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/collect/:id',
+        builder: (_, s) => CollectionOrderScreen(id: s.pathParameters['id']!),
+      ),
+      // مرتجعات — مقابل /delivery_boy/orders/view/:id (ViewOrder.vue)
+      GoRoute(
+        path: '/assignment/:id',
         builder: (_, s) => OrderDetailsScreen(id: s.pathParameters['id']!),
       ),
+      GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
       GoRoute(
         path: '/delivery/:id',
         builder: (_, s) => LiveDeliveryScreen(id: s.pathParameters['id']!),
       ),
       GoRoute(path: '/cash', builder: (_, __) => const CashScreen()),
+      GoRoute(path: '/claim', builder: (_, __) => const ClaimOrdersScreen()),
+      // مهام أخدمني — مقابل /delivery_boy/akhdimni (AkhdimniOrders.vue + AkhdimniPurchase.vue)
+      GoRoute(path: '/akhdimni', builder: (_, __) => const AkhOrdersScreen()),
+      GoRoute(
+        path: '/akhdimni/:id',
+        builder: (_, s) => AkhOrderDetailScreen(id: s.pathParameters['id']!),
+      ),
       GoRoute(path: '/funds', builder: (_, __) => const FundsScreen()),
       GoRoute(
         path: '/withdrawals',
@@ -36,7 +54,14 @@ GoRouter buildRouter() {
       ),
       GoRoute(path: '/reports', builder: (_, __) => const ReportsScreen()),
       GoRoute(path: '/mail', builder: (_, __) => const MailSettingsScreen()),
-      GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+      GoRoute(
+        path: '/notifications',
+        builder: (_, __) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: '/profile',
+        redirect: (_, __) => '/account',
+      ),
       GoRoute(path: '/privacy', builder: (_, __) => const PrivacyScreen()),
       ShellRoute(
         builder: (context, state, child) =>
@@ -45,12 +70,10 @@ GoRouter buildRouter() {
           GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
           GoRoute(
             path: '/orders',
-            builder: (_, s) {
-              final type = int.tryParse(s.uri.queryParameters['type'] ?? '');
-              return OrdersScreen(type: type);
-            },
+            builder: (_, __) => const VueOrdersScreen(),
           ),
           GoRoute(path: '/account', builder: (_, __) => const AccountScreen()),
+          GoRoute(path: '/wallet', builder: (_, __) => const WalletScreen()),
         ],
       ),
     ],
@@ -63,8 +86,34 @@ class DeliveryShell extends StatelessWidget {
   final String location;
 
   int get index {
-    if (location.startsWith('/orders')) return 1;
-    if (location.startsWith('/account')) return 2;
+    // مطابقة TheContainerDeliveryBoy.vue: الرئيسية / طلباتي / محفظتي / حسابي
+    // تفاصيل الطلب /order/ والخريطة /delivery/ والالتقاط /claim تتبع تبويب طلباتي
+    if (location.startsWith('/orders') ||
+        location.startsWith('/order/') ||
+        location.startsWith('/collect/') ||
+        location.startsWith('/assignment/') ||
+        location.startsWith('/delivery/') ||
+        location.startsWith('/akhdimni') ||
+        location.startsWith('/claim')) {
+      return 1;
+    }
+    // محفظتي + فروعها (تحصيل/تحويلات/سحب/تقارير) تتبع تبويب محفظتي
+    if (location.startsWith('/wallet') ||
+        location.startsWith('/cash') ||
+        location.startsWith('/funds') ||
+        location.startsWith('/withdrawals') ||
+        location.startsWith('/reports')) {
+      return 2;
+    }
+    // حسابي + فروعها (ملفي/إعدادات/إشعارات/بريد/سياسات)
+    if (location.startsWith('/account') ||
+        location.startsWith('/profile') ||
+        location.startsWith('/settings') ||
+        location.startsWith('/mail') ||
+        location.startsWith('/notifications') ||
+        location.startsWith('/privacy')) {
+      return 3;
+    }
     return 0;
   }
 
@@ -73,10 +122,18 @@ class DeliveryShell extends StatelessWidget {
     return ListenableBuilder(
       listenable: app,
       builder: (context, _) {
+        final activeOrders = app.workloadInfo.activeCount;
         return Scaffold(
           backgroundColor: AppColors.greyBg,
           appBar: AppBar(
-            toolbarHeight: 64,
+            toolbarHeight: 68,
+            scrolledUnderElevation: 4,
+            shadowColor: AppColors.navy.withValues(alpha: 0.3),
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(
+                bottom: Radius.circular(20),
+              ),
+            ),
             title: Row(
               children: [
                 Container(
@@ -88,21 +145,21 @@ class DeliveryShell extends StatelessWidget {
                   child: Image.asset(
                     'assets/brand/logo.webp',
                     height: 28,
-                    errorBuilder: (_, __, ___) => const Icon(
+                    errorBuilder: (_, __, ___) => Icon(
                       Icons.delivery_dining,
                       color: AppColors.orange,
                       size: 24,
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'سريع ماركت',
-                        style: TextStyle(
+                      Text(
+                        app.brand.identity['name_ar'] ?? 'سريع ماركت - توصيل',
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                         ),
@@ -120,6 +177,31 @@ class DeliveryShell extends StatelessWidget {
                   ),
                 ),
                 if (app.isOnline) const OnlineDot(),
+                const SizedBox(width: 4),
+                IconButton(
+                  tooltip: 'الإشعارات',
+                  onPressed: () => context.push('/notifications'),
+                  icon: Icon(
+                    Icons.notifications_outlined,
+                    color: AppColors.white.withValues(alpha: 0.9),
+                  ),
+                ),
+                // قائمة الرأس — مقابل VerticalHeader.vue (حسابي / الاعدادات)
+                PopupMenuButton<String>(
+                  tooltip: 'القائمة',
+                  icon: Icon(
+                    Icons.more_vert,
+                    color: AppColors.white.withValues(alpha: 0.9),
+                  ),
+                  onSelected: (v) {
+                    if (v == 'account') context.go('/account');
+                    if (v == 'settings') context.push('/settings');
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'account', child: Text('حسابي')),
+                    PopupMenuItem(value: 'settings', child: Text('الاعدادات')),
+                  ],
+                ),
               ],
             ),
           ),
@@ -127,16 +209,26 @@ class DeliveryShell extends StatelessWidget {
           bottomNavigationBar: Container(
             decoration: BoxDecoration(
               color: AppColors.white,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+              border: Border(
+                top: BorderSide(color: AppColors.greyBorder),
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.navy.withValues(alpha: 0.08),
-                  blurRadius: 12,
-                  offset: const Offset(0, -2),
+                  color: AppColors.navy.withValues(alpha: 0.12),
+                  blurRadius: 20,
+                  offset: const Offset(0, -6),
                 ),
               ],
             ),
-            child: NavigationBar(
-              height: 68,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+              child: NavigationBar(
+                height: 72,
               selectedIndex: index,
               elevation: 0,
               backgroundColor: AppColors.white,
@@ -148,22 +240,47 @@ class DeliveryShell extends StatelessWidget {
                   case 1:
                     context.go('/orders');
                   case 2:
+                    context.go('/wallet');
+                  case 3:
                     context.go('/account');
                 }
               },
-              destinations: const [
+              destinations: [
                 NavigationDestination(
                   icon: Icon(Icons.dashboard_outlined),
                   selectedIcon: Icon(Icons.dashboard, color: AppColors.orange),
                   label: 'الرئيسية',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.local_shipping_outlined),
+                  icon: activeOrders > 0
+                      ? Badge(
+                          label: Text('$activeOrders'),
+                          backgroundColor: AppColors.orange,
+                          child: const Icon(Icons.local_shipping_outlined),
+                        )
+                      : const Icon(Icons.local_shipping_outlined),
+                  selectedIcon: activeOrders > 0
+                      ? Badge(
+                          label: Text('$activeOrders'),
+                          backgroundColor: AppColors.orange,
+                          child: Icon(
+                            Icons.local_shipping,
+                            color: AppColors.orange,
+                          ),
+                        )
+                      : Icon(
+                          Icons.local_shipping,
+                          color: AppColors.orange,
+                        ),
+                  label: 'طلباتي',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.account_balance_wallet_outlined),
                   selectedIcon: Icon(
-                    Icons.local_shipping,
+                    Icons.account_balance_wallet,
                     color: AppColors.orange,
                   ),
-                  label: 'الطلبات',
+                  label: 'محفظتي',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.person_outline),
@@ -171,6 +288,7 @@ class DeliveryShell extends StatelessWidget {
                   label: 'حسابي',
                 ),
               ],
+              ),
             ),
           ),
         );
@@ -239,22 +357,27 @@ class DeliveryApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'سريع ماركت — سائق التوصيل',
-      debugShowCheckedModeBanner: false,
-      locale: const Locale('ar'),
-      supportedLocales: const [Locale('ar'), Locale('en')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      routerConfig: router,
-      builder: (context, child) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: child ?? const SizedBox.shrink(),
-      ),
-      theme: AppTheme.light,
+    return ListenableBuilder(
+      listenable: app,
+      builder: (context, _) {
+        return MaterialApp.router(
+          title: app.brand.identity['name_ar'] ?? 'سريع ماركت - توصيل',
+          debugShowCheckedModeBanner: false,
+          locale: const Locale('ar'),
+          supportedLocales: const [Locale('ar'), Locale('en')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          routerConfig: router,
+          builder: (context, child) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: child ?? const SizedBox.shrink(),
+          ),
+          theme: AppTheme.lightFor(app.brand),
+        );
+      },
     );
   }
 }

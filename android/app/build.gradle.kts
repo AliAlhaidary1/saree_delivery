@@ -15,15 +15,17 @@ if (hasReleaseKeystore) {
 }
 
 android {
-    namespace = "com.maribmarket.maribmarket_delivery"
+    namespace = "com.saree.saree_delivery"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // مطلوب لحزمة flutter_local_notifications (إشعارات الإسناد الفورية)
+        isCoreLibraryDesugaringEnabled = true
     }
     defaultConfig {
-        applicationId = "com.maribmarket.maribmarket_delivery"
+        applicationId = "com.saree.saree_delivery"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -76,4 +78,9 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // مطلوب لحزمة flutter_local_notifications (إشعارات الإسناد الفورية)
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

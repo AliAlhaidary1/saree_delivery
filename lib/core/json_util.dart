@@ -23,6 +23,11 @@ class J {
     return int.tryParse('$value') ?? fallback;
   }
 
+  static double d(dynamic value, [double fallback = 0]) {
+    if (value is num) return value.toDouble();
+    return double.tryParse('$value') ?? fallback;
+  }
+
   static bool flag(dynamic value) {
     return value == true || value == 1 || value == '1';
   }
@@ -95,11 +100,16 @@ class ApiResult {
   int get status => J.i(raw['status']);
   bool get ok => status == 1;
   String get message => J.str(raw['message'] ?? raw['msg']);
+  String get failMessage =>
+      message.isEmpty ? 'تعذر التحميل. تحقق من الإنترنت.' : message;
   dynamic get data => raw['data'];
   Map<String, dynamic> get dataMap => J.map(raw['data']);
   List<Map<String, dynamic>> get dataMaps {
     final value = raw['data'];
     if (value is List) return J.maps(value);
+    // paginator: data.data is List
+    final paginatorData = dataMap['data'];
+    if (paginatorData is List) return J.maps(paginatorData);
     for (final key in [
       'orders',
       'data',
@@ -107,9 +117,16 @@ class ApiResult {
       'transactions',
       'salesReports',
       'fundTransfers',
+      'assignments',
     ]) {
       final nested = dataMap[key];
       if (nested is List) return J.maps(nested);
+      final rawNested = raw[key];
+      if (rawNested is List) return J.maps(rawNested);
+    }
+    // fallback: if dataMap itself looks like assignment/order
+    if (dataMap.containsKey('id') || dataMap.containsKey('status')) {
+      return [dataMap];
     }
     return const [];
   }
