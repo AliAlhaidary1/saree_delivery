@@ -44,7 +44,7 @@ class BrandedSplash extends StatelessWidget {
               ),
               const SizedBox(height: 22),
               Text(
-                'سريع ماركت',
+                'سريع مارت',
                 style: TextStyle(
                   color: AppColors.white,
                   fontSize: 26,

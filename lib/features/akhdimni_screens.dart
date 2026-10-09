@@ -247,6 +247,25 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
   bool get isPurchaseRequired => J.flag(order['is_purchase_required']);
   String get activeStatus => J.str(order['active_status']);
 
+  // Legacy lifecycle values (removed old flow) mapped to the new lifecycle
+  // so action buttons never silently disappear.
+  String get effStatus {
+    switch (activeStatus) {
+      case 'in_progress':
+      case 'inprogress':
+        return 'assigned';
+      case 'completed':
+      case 'complete':
+      case 'done':
+        return 'delivered';
+      case 'pending_review':
+      case 'approved':
+        return 'pending';
+      default:
+        return activeStatus;
+    }
+  }
+
   double get itemsTotal {
     var t = 0.0;
     for (final it in items) {
@@ -639,7 +658,7 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
   }
 
   Widget statusChip() {
-    final st = activeStatus;
+    final st = effStatus;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -657,7 +676,7 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
 
   // زر رئيسي واحد حسب المرحلة — نفس منطق الويب.
   Widget nextStepButton() {
-    if (activeStatus == 'pending' || activeStatus == 'assigned') {
+    if (effStatus == 'pending' || effStatus == 'assigned') {
       return SizedBox(
         width: double.infinity,
         child: FilledButton(
@@ -667,7 +686,7 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
         ),
       );
     }
-    if (activeStatus == 'picked_up') {
+    if (effStatus == 'picked_up') {
       return SizedBox(
         width: double.infinity,
         child: FilledButton(
@@ -676,7 +695,7 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
         ),
       );
     }
-    if (activeStatus == 'out_for_delivery') {
+    if (effStatus == 'out_for_delivery') {
       return SizedBox(
         width: double.infinity,
         child: FilledButton(
@@ -964,8 +983,8 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
                       ),
                       const SizedBox(height: 12),
                       nextStepButton(),
-                      if (activeStatus != 'delivered' &&
-                          activeStatus != 'cancelled')
+                      if (effStatus != 'delivered' &&
+                          effStatus != 'cancelled')
                         Center(
                           child: TextButton(
                             onPressed:

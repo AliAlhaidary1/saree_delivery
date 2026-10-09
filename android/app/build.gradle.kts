@@ -15,7 +15,7 @@ if (hasReleaseKeystore) {
 }
 
 android {
-    namespace = "com.saree.saree_delivery"
+    namespace = "com.sreamart.sreamart_delivery"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
     compileOptions {
@@ -25,7 +25,7 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
     defaultConfig {
-        applicationId = "com.saree.saree_delivery"
+        applicationId = "com.sreamart.sreamart_delivery"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

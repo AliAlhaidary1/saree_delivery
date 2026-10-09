@@ -158,7 +158,7 @@ class DeliveryShell extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        app.brand.identity['name_ar'] ?? 'سريع ماركت - توصيل',
+                        app.brand.identity['name_ar'] ?? 'سريع مارت - توصيل',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -361,7 +361,7 @@ class DeliveryApp extends StatelessWidget {
       listenable: app,
       builder: (context, _) {
         return MaterialApp.router(
-          title: app.brand.identity['name_ar'] ?? 'سريع ماركت - توصيل',
+          title: app.brand.identity['name_ar'] ?? 'سريع مارت - توصيل',
           debugShowCheckedModeBanner: false,
           locale: const Locale('ar'),
           supportedLocales: const [Locale('ar'), Locale('en')],

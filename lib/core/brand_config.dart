@@ -15,7 +15,7 @@ class BrandConfig {
 
   static const defaults = BrandConfig(
     version: 1,
-    identity: {'name_ar': 'سريع ماركت - توصيل', 'name_en': 'Saree Market - Delivery'},
+    identity: {'name_ar': 'سريع مارت - توصيل', 'name_en': 'Sreamart - Delivery'},
     colors: {
       'primary': '#0A2540',
       'accent': '#FF6B00',
@@ -35,12 +35,12 @@ class BrandConfig {
     final identity = Map<String, String>.from(base.identity);
     final id = json['identity'];
     if (id is Map) id.forEach((k, v) => identity['$k'] = '$v');
-    // توصيل: إجبار لاحقة "- توصيل" حتى لو الـ Backend رجع "سريع ماركت" فقط — مثل فصل البائع
-    if (identity['name_ar'] == 'سريع ماركت') {
-      identity['name_ar'] = 'سريع ماركت - توصيل';
+    // توصيل: إجبار لاحقة "- توصيل" حتى لو الـ Backend رجع "سريع مارت" فقط — مثل فصل البائع
+    if (identity['name_ar'] == 'سريع مارت') {
+      identity['name_ar'] = 'سريع مارت - توصيل';
     }
-    if (identity['name_en'] == 'Saree Market') {
-      identity['name_en'] = 'Saree Market - Delivery';
+    if (identity['name_en'] == 'Sreamart') {
+      identity['name_en'] = 'Sreamart - Delivery';
     }
 
     final colors = Map<String, String>.from(base.colors);
