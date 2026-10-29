@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config.dart';
@@ -11,10 +12,12 @@ import 'json_util.dart';
 import 'panel_api.dart';
 import 'push_service.dart';
 import 'models/assignment.dart';
+import 'token_vault.dart';
 
 class AppController extends ChangeNotifier {
   late SharedPreferences _prefs;
   late PanelApi api;
+  late TokenVault _tokenVault;
 
   String apiUrl = AppConfig.defaultApiUrl;
   String? token;
@@ -50,12 +53,17 @@ class AppController extends ChangeNotifier {
   Future<void> bootstrap() async {
     _prefs = await SharedPreferences.getInstance();
     // لا تمسح عنوان الخادم المخصص في وضع التطوير — اقرأ المخزن أولاً
+    _tokenVault = TokenVault(_prefs);
     final storedUrl = _prefs.getString('api_url');
-    apiUrl = (storedUrl != null && storedUrl.trim().isNotEmpty)
+    apiUrl = !kReleaseMode && storedUrl != null && storedUrl.trim().isNotEmpty
         ? storedUrl
         : AppConfig.defaultApiUrl;
     await _prefs.setString('api_url', apiUrl);
-    token = _prefs.getString('token');
+    try {
+      token = await _tokenVault.read();
+    } catch (_) {
+      token = null;
+    }
     isOnline = _prefs.getBool('is_online') ?? false;
     final stored = _prefs.getString('user_json');
     if (stored != null) {
@@ -65,7 +73,7 @@ class AppController extends ChangeNotifier {
     }
     api = PanelApi(baseUrl: apiUrl, token: token);
     api.onUnauthorized = () {
-      if (isLoggedIn) logout();
+      if (isLoggedIn) logout(revokeRemote: false);
     };
     try {
       brand = await BrandService().load(apiUrl);
@@ -128,7 +136,14 @@ class AppController extends ChangeNotifier {
     }
     user = result.user.isNotEmpty ? result.user : result.dataMap;
     api.setToken(token);
-    await _prefs.setString('token', token ?? '');
+    try {
+      await _tokenVault.write(token!);
+    } catch (_) {
+      token = null;
+      user = null;
+      api.setToken(null);
+      return 'تعذر حفظ الجلسة بأمان على الجهاز';
+    }
     await _prefs.setString('user_json', jsonEncode(user));
     // الرفع الفوري + عند أي تجدد لاحق — يضمن وصول الإشعارات والتطبيق مغلق.
     PushService.onTokenChanged = _uploadPushToken;
@@ -155,7 +170,12 @@ class AppController extends ChangeNotifier {
     await refreshDashboard();
   }
 
-  Future<void> logout() async {
+  Future<void> logout({bool revokeRemote = true}) async {
+    if (revokeRemote && token != null) {
+      try {
+        await api.logout();
+      } catch (_) {}
+    }
     stopOrderPolling();
     token = null;
     user = null;
@@ -171,7 +191,7 @@ class AppController extends ChangeNotifier {
     _seenOrderIds.clear();
     _seenAssignmentIds.clear();
     api.setToken(null);
-    await _prefs.remove('token');
+    await _tokenVault.clear();
     await _prefs.remove('user_json');
     notifyListeners();
   }
@@ -225,7 +245,8 @@ class AppController extends ChangeNotifier {
       final result = await api.assignments(page: 1);
       List<Map<String, dynamic>> items = [];
       // paginator handling
-      if (result.dataMap.containsKey('data') && result.dataMap['data'] is List) {
+      if (result.dataMap.containsKey('data') &&
+          result.dataMap['data'] is List) {
         items = J.maps(result.dataMap['data']);
       } else if (result.list('data').isNotEmpty) {
         items = result.list('data');
@@ -242,7 +263,9 @@ class AppController extends ChangeNotifier {
         // try legacy orders as fallback
         try {
           final legacy = await api.orders(type: 1, limit: 10);
-          final legacyItems = legacy.list('orders').isNotEmpty ? legacy.list('orders') : legacy.dataMaps;
+          final legacyItems = legacy.list('orders').isNotEmpty
+              ? legacy.list('orders')
+              : legacy.dataMaps;
           for (final order in legacyItems) {
             final id = '${order['order_id'] ?? order['id']}';
             if (id.isNotEmpty && !_seenOrderIds.contains(id)) {
@@ -321,6 +344,7 @@ class AppController extends ChangeNotifier {
       if (h < 0 || h > 23 || m < 0 || m > 59) return -1;
       return h * 60 + m;
     }
+
     final om = toMin(o);
     final cm = toMin(c);
     if (om < 0 || cm < 0) return true;
@@ -331,6 +355,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setApiUrl(String url) async {
+    if (kReleaseMode) return;
     final value = url.trim();
     apiUrl = value.isEmpty ? AppConfig.defaultApiUrl : value;
     await _prefs.setString('api_url', apiUrl);

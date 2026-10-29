@@ -5,9 +5,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/app_controller.dart';
 import '../core/config.dart';
+import '../core/handover_intent_store.dart';
 import '../core/json_util.dart';
 import '../core/models/assignment.dart';
 import '../core/otp_resend.dart';
@@ -16,6 +18,209 @@ import '../theme/app_colors.dart';
 import '../widgets/common.dart';
 import '../widgets/driver_ui.dart';
 import '../widgets/branded_skeleton.dart';
+
+/// هيدر كحلي فخم لصفحة الدخول: اسم العلامة نصاً بخط كبير
+/// وتوزيع جانبي غير متماثل + علامة البرق (نفس هوية باقي التطبيقات).
+class AuthNavyHeader extends StatelessWidget {
+  const AuthNavyHeader({super.key, required this.subtitle, this.badge});
+
+  final String subtitle;
+  final String? badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.navy,
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+      ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+        child: Stack(
+          children: [
+            // علامة برق ضخمة شفافة في الزاوية للعمق.
+            const Positioned(
+              left: -18,
+              bottom: -28,
+              child: Icon(
+                Icons.bolt_rounded,
+                size: 130,
+                color: Color(0x0DFFFFFF),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'SAREE MART',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 3.2,
+                                color: Color(0x99FFFFFF),
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  const TextSpan(
+                                    text: 'سريع ',
+                                    style: TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.1,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: 'مارت',
+                                    style: TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.1,
+                                      color: AppColors.orange,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      // علامة البرق بدل الشعار الصوري.
+                      Container(
+                        width: 58,
+                        height: 58,
+                        decoration: BoxDecoration(
+                          color: AppColors.orange,
+                          borderRadius: BorderRadius.circular(19),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.orange.withValues(alpha: 0.35),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.bolt_rounded,
+                          size: 32,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    height: 1,
+                    color: Colors.white.withValues(alpha: 0.14),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (badge != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.18),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: BoxDecoration(
+                                  color: AppColors.orange,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 7),
+                              Text(
+                                badge!,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Expanded(
+                        child: Text(
+                          subtitle,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            height: 1.6,
+                            color: Color(0xC4FFFFFF),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AuthFormCard extends StatelessWidget {
+  const AuthFormCard({super.key, required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.navy.withValues(alpha: 0.10)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.navy.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      ),
+    );
+  }
+}
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -163,313 +368,389 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLogin = view == 'login';
+    final headerSubtitle = isLogin
+        ? 'مرحباً بعودتك، سجّل الدخول لبدء التوصيل'
+        : (view == 'forgot'
+              ? 'سنرسل رمز تحقق إلى واتساب أو الجوال المسجّل'
+              : 'أدخل رمز التحقق وكلمة المرور الجديدة');
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(gradient: AppColors.navyGradient),
-        child: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(24),
-                children: [
-                  SizedBox(height: 32),
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: AppColors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(
-                          color: AppColors.orange.withValues(alpha: 0.45),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.orange.withValues(alpha: 0.25),
-                            blurRadius: 28,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Image.asset(
-                        'assets/brand/logo.webp',
-                        height: 84,
-                        errorBuilder: (_, __, ___) => Icon(
-                          Icons.delivery_dining,
-                          size: 64,
-                          color: AppColors.orange,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    app.brand.identity['name_ar'] ?? 'سريع مارت - توصيل',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.white,
-                    ),
-                  ),
-                  Text(
-                    view == 'login'
-                        ? 'توصيل'
-                        : 'استعادة كلمة المرور',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppColors.white.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  SizedBox(height: 32),
-                  Container(
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(28),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.25),
-                          blurRadius: 32,
-                          offset: const Offset(0, 12),
-                        ),
-                      ],
-                    ),
+      backgroundColor: AppColors.greyBg,
+      appBar: AppBar(
+        backgroundColor: AppColors.navy,
+        foregroundColor: AppColors.white,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          isLogin ? 'دخول المندوب' : 'استعادة كلمة المرور',
+          style: TextStyle(color: AppColors.white, fontWeight: FontWeight.w700),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Column(
+            children: [
+              AuthNavyHeader(
+                subtitle: headerSubtitle,
+                badge: isLogin ? 'تطبيق المندوب' : 'استعادة الحساب',
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 520),
                     child: Column(
                       children: [
-                        TextField(
-                          controller: email,
-                          keyboardType: TextInputType.text,
-                          textDirection: TextDirection.ltr,
-                          decoration: InputDecoration(
-                            labelText: 'الجوال أو البريد',
-                            prefixText: view == 'login'
-                                ? null
-                                : '+${AppConfig.countryDialCode} ',
-                          ),
-                        ),
-                        if (view == 'login') ...[
-                          SizedBox(height: 12),
-                          TextField(
-                            controller: password,
-                            obscureText: hidePassword,
-                            decoration: InputDecoration(
-                              labelText: 'كلمة المرور',
-                              suffixIcon: IconButton(
-                                onPressed: () => setState(
-                                  () => hidePassword = !hidePassword,
-                                ),
-                                icon: Icon(
-                                  hidePassword
-                                      ? Icons.visibility_outlined
-                                      : Icons.visibility_off_outlined,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                        if (view == 'forgot')
-                          const Padding(
-                            padding: EdgeInsets.only(top: 8),
-                            child: Text(
-                              'سنرسل رمز تحقق إلى واتساب أو الجوال المسجّل.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.greyText,
-                              ),
-                            ),
-                          ),
-                        if (view == 'reset') ...[
-                          SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.greyBg,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
+                        AuthFormCard(
+                          children: [
+                            Row(
                               children: [
-                                Row(
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.navy.withValues(
+                                      alpha: 0.08,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    isLogin
+                                        ? Icons.delivery_dining_rounded
+                                        : Icons.lock_reset_rounded,
+                                    size: 18,
+                                    color: AppColors.navy,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        isLogin
+                                            ? 'أدخل بياناتك للمتابعة'
+                                            : 'خطوة واحدة وتستعيد حسابك',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                          color: AppColors.navy,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        width: 36,
+                                        height: 3,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.orange,
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: email,
+                              keyboardType: TextInputType.text,
+                              textDirection: TextDirection.ltr,
+                              textInputAction: TextInputAction.next,
+                              autofillHints: const [
+                                AutofillHints.telephoneNumber,
+                                AutofillHints.username,
+                              ],
+                              decoration: InputDecoration(
+                                labelText: 'الجوال أو البريد',
+                                prefixIcon: Icon(
+                                  Icons.person_outline_rounded,
+                                  size: 20,
+                                  color: AppColors.navy.withValues(alpha: 0.7),
+                                ),
+                                prefixText: view == 'login'
+                                    ? null
+                                    : '+${AppConfig.countryDialCode} ',
+                              ),
+                            ),
+                            if (view == 'login') ...[
+                              SizedBox(height: 12),
+                              TextField(
+                                controller: password,
+                                obscureText: hidePassword,
+                                textInputAction: TextInputAction.done,
+                                autofillHints: const [AutofillHints.password],
+                                onSubmitted: (_) => _submit(),
+                                decoration: InputDecoration(
+                                  labelText: 'كلمة المرور',
+                                  prefixIcon: Icon(
+                                    Icons.lock_outline_rounded,
+                                    size: 20,
+                                    color: AppColors.navy.withValues(
+                                      alpha: 0.7,
+                                    ),
+                                  ),
+                                  suffixIcon: IconButton(
+                                    onPressed: () => setState(
+                                      () => hidePassword = !hidePassword,
+                                    ),
+                                    icon: Icon(
+                                      hidePassword
+                                          ? Icons.visibility_outlined
+                                          : Icons.visibility_off_outlined,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                            if (view == 'forgot')
+                              const Padding(
+                                padding: EdgeInsets.only(top: 8),
+                                child: Text(
+                                  'سنرسل رمز تحقق إلى واتساب أو الجوال المسجّل.',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.greyText,
+                                  ),
+                                ),
+                              ),
+                            if (view == 'reset') ...[
+                              SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.greyBg,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
                                   children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            email.text.trim().isEmpty
+                                                ? 'الرقم الحالي غير محدد'
+                                                : email.text.trim(),
+                                            textDirection: TextDirection.ltr,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                        TextButton(
+                                          onPressed: () => setState(
+                                            () =>
+                                                _editingPhone = !_editingPhone,
+                                          ),
+                                          child: Text(
+                                            _editingPhone ? 'تم' : 'تعديل',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (_editingPhone)
+                                      TextField(
+                                        controller: email,
+                                        keyboardType: TextInputType.text,
+                                        textDirection: TextDirection.ltr,
+                                        decoration: InputDecoration(
+                                          labelText: 'الجوال أو البريد',
+                                          prefixText:
+                                              '+${AppConfig.countryDialCode} ',
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              TextField(
+                                controller: otp,
+                                keyboardType: TextInputType.number,
+                                textInputAction: TextInputAction.next,
+                                autofillHints: const [
+                                  AutofillHints.oneTimeCode,
+                                ],
+                                decoration: const InputDecoration(
+                                  labelText: 'رمز التحقق',
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              labeledField(
+                                newPassword,
+                                'كلمة المرور الجديدة',
+                                toggleObscure: true,
+                              ),
+                              labeledField(
+                                confirm,
+                                'تأكيد كلمة المرور',
+                                toggleObscure: true,
+                              ),
+                              SizedBox(height: 8),
+                              TextButton(
+                                onPressed:
+                                    (!_otpGate.canSend || _resendBusy || busy)
+                                    ? null
+                                    : _resendOtp,
+                                child: Text(kOtpResendLabel),
+                              ),
+                            ],
+                            if (_otpSuccess != null && view != 'login')
+                              Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(top: 12),
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.success.withValues(
+                                    alpha: 0.12,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.success.withValues(
+                                      alpha: 0.4,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: AppColors.success,
+                                    ),
+                                    SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        email.text.trim().isEmpty
-                                            ? 'الرقم الحالي غير محدد'
-                                            : email.text.trim(),
-                                        textDirection: TextDirection.ltr,
-                                        style: const TextStyle(
+                                        _otpSuccess!,
+                                        style: TextStyle(
+                                          color: AppColors.success,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                     ),
-                                    TextButton(
-                                      onPressed: () => setState(
-                                        () => _editingPhone = !_editingPhone,
-                                      ),
-                                      child: Text(
-                                        _editingPhone ? 'تم' : 'تعديل',
-                                      ),
-                                    ),
                                   ],
                                 ),
-                                if (_editingPhone)
-                                  TextField(
-                                    controller: email,
-                                    keyboardType: TextInputType.text,
-                                    textDirection: TextDirection.ltr,
-                                    decoration: InputDecoration(
-                                      labelText: 'الجوال أو البريد',
-                                      prefixText:
-                                          '+${AppConfig.countryDialCode} ',
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: 12),
-                          TextField(
-                            controller: otp,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'رمز التحقق',
-                            ),
-                          ),
-                          SizedBox(height: 12),
-                          labeledField(
-                            newPassword,
-                            'كلمة المرور الجديدة',
-                            toggleObscure: true,
-                          ),
-                          labeledField(
-                            confirm,
-                            'تأكيد كلمة المرور',
-                            toggleObscure: true,
-                          ),
-                          SizedBox(height: 8),
-                          TextButton(
-                            onPressed:
-                                (!_otpGate.canSend || _resendBusy || busy)
-                                ? null
-                                : _resendOtp,
-                            child: Text(kOtpResendLabel),
-                          ),
-                        ],
-                        if (_otpSuccess != null && view != 'login')
-                          Container(
-                            width: double.infinity,
-                            margin: const EdgeInsets.only(top: 12),
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.success.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppColors.success.withValues(alpha: 0.4),
                               ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.check_circle,
-                                  color: AppColors.success,
-                                ),
-                                SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _otpSuccess!,
-                                    style: TextStyle(
-                                      color: AppColors.success,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                            if (_otpSuccess != null && view != 'login')
+                              const Padding(
+                                padding: EdgeInsets.only(top: 8),
+                                child: Text(
+                                  kOtpReassureHint,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.greyText,
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        if (_otpSuccess != null && view != 'login')
-                          const Padding(
-                            padding: EdgeInsets.only(top: 8),
-                            child: Text(
-                              kOtpReassureHint,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.greyText,
                               ),
+                            if (error != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: Text(
+                                  error!,
+                                  style: TextStyle(color: AppColors.error),
+                                ),
+                              ),
+                            SizedBox(height: 18),
+                            DriverActionButton(
+                              label: view == 'login'
+                                  ? 'دخول'
+                                  : view == 'forgot'
+                                  ? 'إرسال الرمز'
+                                  : 'تغيير كلمة المرور',
+                              loading: busy,
+                              onPressed: busy
+                                  ? null
+                                  : (view == 'forgot' && !_otpGate.canSend)
+                                  ? null
+                                  : _submit,
                             ),
-                          ),
-                        if (error != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: Text(
-                              error!,
-                              style: TextStyle(color: AppColors.error),
-                            ),
-                          ),
-                        SizedBox(height: 20),
-                        DriverActionButton(
-                          label: view == 'login'
-                              ? 'دخول'
-                              : view == 'forgot'
-                              ? 'إرسال الرمز'
-                              : 'تغيير كلمة المرور',
-                          loading: busy,
-                          onPressed: busy
-                              ? null
-                              : (view == 'forgot' && !_otpGate.canSend)
-                              ? null
-                              : _submit,
+                            if (view != 'reset')
+                              TextButton(
+                                onPressed: busy
+                                    ? null
+                                    : () => setState(() {
+                                        view = view == 'login'
+                                            ? 'forgot'
+                                            : 'login';
+                                        error = null;
+                                        _otpSuccess = null;
+                                        _editingPhone = false;
+                                        if (view == 'login') {
+                                          _otpGate.cancelBackground();
+                                        }
+                                      }),
+                                child: Text(
+                                  view == 'login'
+                                      ? 'نسيت كلمة المرور؟'
+                                      : 'العودة لتسجيل الدخول',
+                                ),
+                              ),
+                          ],
                         ),
-                        if (view != 'reset')
-                          TextButton(
-                            onPressed: busy
-                                ? null
-                                : () => setState(() {
-                                    view = view == 'login' ? 'forgot' : 'login';
-                                    error = null;
-                                    _otpSuccess = null;
-                                    _editingPhone = false;
-                                    if (view == 'login') {
-                                      _otpGate.cancelBackground();
-                                    }
-                                  }),
-                            child: Text(
-                              view == 'login'
-                                  ? 'نسيت كلمة المرور؟'
-                                  : 'العودة لتسجيل الدخول',
-                            ),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
                           ),
+                          decoration: BoxDecoration(
+                            color: AppColors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppColors.navy.withValues(alpha: 0.10),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.navy.withValues(alpha: 0.04),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.admin_panel_settings_outlined,
+                                    size: 16,
+                                    color: AppColors.navy,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Text(
+                                    'التسجيل يتم من الإدارة فقط.',
+                                    style: TextStyle(
+                                      color: AppColors.greyText,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              TextButton(
+                                onPressed: () => context.push('/privacy'),
+                                child: Text(
+                                  'سياسة الخصوصية والشروط',
+                                  style: TextStyle(
+                                    color: AppColors.navy,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  Text(
-                    'التسجيل يتم من الإدارة فقط.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppColors.white.withValues(alpha: 0.6),
-                      fontSize: 12,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => context.push('/privacy'),
-                    child: Text(
-                      'سياسة الخصوصية والشروط',
-                      style: TextStyle(
-                        color: AppColors.white.withValues(alpha: 0.8),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+            ],
+          ),
         ),
       ),
     );
@@ -665,9 +946,7 @@ class _WeeklyEarningsCardState extends State<WeeklyEarningsCard> {
 
   @override
   Widget build(BuildContext context) {
-    final maxV = values.isEmpty
-        ? 0.0
-        : values.reduce((a, b) => a > b ? a : b);
+    final maxV = values.isEmpty ? 0.0 : values.reduce((a, b) => a > b ? a : b);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -692,7 +971,8 @@ class _WeeklyEarningsCardState extends State<WeeklyEarningsCard> {
             ],
           ),
           const SizedBox(height: 12),
-          if (loading) const ChartSkeleton()
+          if (loading)
+            const ChartSkeleton()
           else if (values.isEmpty || maxV <= 0)
             const Text(
               'لا توجد مبيعات مسجلة لهذا الأسبوع.',
@@ -704,7 +984,9 @@ class _WeeklyEarningsCardState extends State<WeeklyEarningsCard> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: List.generate(values.length, (i) {
-                  final h = maxV > 0 ? (values[i] / maxV).clamp(0.05, 1.0) : 0.05;
+                  final h = maxV > 0
+                      ? (values[i] / maxV).clamp(0.05, 1.0)
+                      : 0.05;
                   return Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 3),
@@ -712,9 +994,7 @@ class _WeeklyEarningsCardState extends State<WeeklyEarningsCard> {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           Text(
-                            values[i] > 0
-                                ? values[i].toStringAsFixed(0)
-                                : '',
+                            values[i] > 0 ? values[i].toStringAsFixed(0) : '',
                             style: const TextStyle(
                               fontSize: 9,
                               color: AppColors.greyText,
@@ -788,7 +1068,8 @@ class _HomeScreenState extends State<HomeScreen> {
           'amount_owed_to_you': d['amount_owed_to_you'] ?? 0,
           'your_earnings': d['your_earnings'] ?? 0,
         };
-        overLimit = d['over_cash_limit'] == true ||
+        overLimit =
+            d['over_cash_limit'] == true ||
             d['over_cash_limit'] == 1 ||
             d['over_cash_limit'] == '1';
         homeLoading = false;
@@ -810,7 +1091,8 @@ class _HomeScreenState extends State<HomeScreen> {
           'amount_owed_to_you': net < 0 ? -net : 0,
           'your_earnings': f['earnings_balance'] ?? 0,
         };
-        overLimit = f['over_cash_limit'] == true ||
+        overLimit =
+            f['over_cash_limit'] == true ||
             f['over_cash_limit'] == 1 ||
             f['over_cash_limit'] == '1';
         homeLoading = false;
@@ -826,7 +1108,8 @@ class _HomeScreenState extends State<HomeScreen> {
       listenable: app,
       builder: (context, _) {
         final cur = app.brand.identity['currency'] ?? '';
-        String money(dynamic v) => cur.isNotEmpty ? '$cur $v' : '$v';
+        String money(dynamic v) =>
+            cur.isNotEmpty ? '$cur ${formatAmount(v)}' : formatAmount(v);
         final owed = J.d(home['amount_owed_to_you']);
         final toReturn = J.d(home['amount_to_return']);
         // Home.vue cards(): إن وُجد مستحق لك → بطاقة "مستحق لك" وإلا "مطلوب توريده"
@@ -868,46 +1151,43 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   const SizedBox(height: 16),
-                  LayoutBuilder(builder: (context, constraints) {
-                    final isTablet = constraints.maxWidth > 600;
-                    return GridView.count(
-                      crossAxisCount: isTablet ? 4 : 2,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                      childAspectRatio: isTablet ? 1.1 : 0.95,
-                      children: [
-                        KpiCard(
-                          icon: Icons.shopping_cart_outlined,
-                          label: 'طلبات اليوم',
-                          value: '${home['todays_deliveries'] ?? 0}',
-                          onTap: () => context.go('/orders'),
-                        ),
-                        KpiCard(
-                          icon: Icons.payments_outlined,
-                          label: 'متبقي للتحصيل',
-                          value: money(home['cash_to_collect'] ?? 0),
-                          accent: AppColors.success,
-                          onTap: () => context.go('/orders'),
-                        ),
-                        KpiCard(
-                          icon: Icons.handshake_outlined,
-                          label: settlementLabel,
-                          value: money(settlementValue),
-                          accent: settlementAccent,
-                          onTap: () => context.go('/wallet'),
-                        ),
-                        KpiCard(
-                          icon: Icons.star_outline,
-                          label: 'أرباحي',
-                          value: money(home['your_earnings'] ?? 0),
-                          accent: Colors.purple,
-                          onTap: () => context.go('/wallet'),
-                        ),
-                      ],
-                    );
-                  }),
+                  GridView.count(
+                    crossAxisCount: responsiveColumns(context, tileWidth: 170),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    mainAxisExtent: 150,
+                    children: [
+                      KpiCard(
+                        icon: Icons.shopping_cart_outlined,
+                        label: 'طلبات اليوم',
+                        value: '${home['todays_deliveries'] ?? 0}',
+                        onTap: () => context.go('/orders'),
+                      ),
+                      KpiCard(
+                        icon: Icons.payments_outlined,
+                        label: 'متبقي للتحصيل',
+                        value: money(home['cash_to_collect'] ?? 0),
+                        accent: AppColors.success,
+                        onTap: () => context.go('/orders'),
+                      ),
+                      KpiCard(
+                        icon: Icons.handshake_outlined,
+                        label: settlementLabel,
+                        value: money(settlementValue),
+                        accent: settlementAccent,
+                        onTap: () => context.go('/wallet'),
+                      ),
+                      KpiCard(
+                        icon: Icons.star_outline,
+                        label: 'أرباحي',
+                        value: money(home['your_earnings'] ?? 0),
+                        accent: Colors.purple,
+                        onTap: () => context.go('/wallet'),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   DriverActionButton(
                     label: 'عرض الطلبات',
@@ -929,44 +1209,50 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             if (app.incomingAssignment != null || app.incomingOrder != null)
-              Builder(builder: (context) {
-                final raw = app.incomingAssignment ?? app.incomingOrder!;
-                final isAssignment = app.incomingAssignment != null;
-                final overlayOrder = isAssignment
-                    ? {
-                        'id': raw['id'],
-                        'store_name': AssignmentHelper.storeName(raw),
-                        'address': AssignmentHelper.addressOf(raw),
-                        'distance': raw['distance'] ?? '—',
-                        'delivery_charge':
-                            raw['cod_to_collect'] ?? raw['delivery_charge'] ?? '—',
+              Builder(
+                builder: (context) {
+                  final raw = app.incomingAssignment ?? app.incomingOrder!;
+                  final isAssignment = app.incomingAssignment != null;
+                  final overlayOrder = isAssignment
+                      ? {
+                          'id': raw['id'],
+                          'store_name': AssignmentHelper.storeName(raw),
+                          'address': AssignmentHelper.addressOf(raw),
+                          'distance': raw['distance'] ?? '—',
+                          'delivery_charge':
+                              raw['cod_to_collect'] ??
+                              raw['delivery_charge'] ??
+                              '—',
+                        }
+                      : raw;
+                  return IncomingOrderOverlay(
+                    order: overlayOrder,
+                    onAccept: () async {
+                      final id = '${raw['id']}';
+                      app.dismissIncomingOrder();
+                      if (isAssignment) {
+                        final res = await app.api.acceptAssignment(id);
+                        if (!context.mounted) return;
+                        if (!res.ok) {
+                          toast(
+                            context,
+                            res.message.isEmpty
+                                ? 'فشل قبول الطلب'
+                                : res.message,
+                          );
+                          return;
+                        }
                       }
-                    : raw;
-                return IncomingOrderOverlay(
-                  order: overlayOrder,
-                  onAccept: () async {
-                    final id = '${raw['id']}';
-                    app.dismissIncomingOrder();
-                    if (isAssignment) {
-                      final res = await app.api.acceptAssignment(id);
                       if (!context.mounted) return;
-                      if (!res.ok) {
-                        toast(
-                          context,
-                          res.message.isEmpty
-                              ? 'فشل قبول الطلب'
-                              : res.message,
-                        );
-                        return;
-                      }
-                    }
-                    if (!context.mounted) return;
-                    // بعد القبول → تفاصيل التحصيل (MyOrder.vue)
-                    context.push('/order/$id');
-                  },
-                  onDecline: app.dismissIncomingOrder,
-                );
-              }),
+                      // بعد القبول → تفاصيل المهمة/التحصيل حسب النوع
+                      context.push(
+                        isAssignment ? '/assignment/$id' : '/order/$id',
+                      );
+                    },
+                    onDecline: app.dismissIncomingOrder,
+                  );
+                },
+              ),
           ],
         );
       },
@@ -1013,11 +1299,7 @@ class _SummaryStat extends StatelessWidget {
             ),
             child: Column(
               children: [
-                Icon(
-                  icon,
-                  size: 18,
-                  color: active ? AppColors.orange : c,
-                ),
+                Icon(icon, size: 18, color: active ? AppColors.orange : c),
                 const SizedBox(height: 4),
                 Text(
                   '$count',
@@ -1132,7 +1414,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (all.isEmpty && result.ok) {
       final legacy = await app.api.orders(type: type);
       if (!mounted) return;
-      all = legacy.list('orders').isNotEmpty ? legacy.list('orders') : legacy.dataMaps;
+      all = legacy.list('orders').isNotEmpty
+          ? legacy.list('orders')
+          : legacy.dataMaps;
       // tag legacy
       for (final m in all) {
         m['_legacy'] = true;
@@ -1151,16 +1435,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
     var base = List<Map<String, dynamic>>.from(items);
     // مرتجعات أولاً (is_return_pickup / assignment_type=return_pickup)
     if (returnsOnly) {
-      base = base
-          .where((m) => AssignmentHelper.isReturnPickup(m))
-          .toList();
+      base = base.where((m) => AssignmentHelper.isReturnPickup(m)).toList();
     }
     if (type == null) {
       filtered = base;
     } else if (type == 1) {
       // جارية: not delivered/cancelled/failed (Workload definition)
       filtered = base.where((m) {
-        if (m['_legacy'] == true) return true; // legacy already filtered by type=1
+        if (m['_legacy'] == true)
+          return true; // legacy already filtered by type=1
         final st = J.str(m['status']).toLowerCase();
         return st != 'delivered' && st != 'cancelled' && st != 'failed';
       }).toList();
@@ -1354,12 +1637,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   hint: const Text('الحالة', style: TextStyle(fontSize: 12)),
                   underline: const SizedBox.shrink(),
                   items: serverStatuses
-                      .map((s) => DropdownMenuItem(
-                            value: s,
-                            child: Text(
-                                s.isEmpty ? 'الكل' : (AssignmentStatus.fromString(s)?.labelAr ?? s),
-                                style: const TextStyle(fontSize: 12)),
-                          ))
+                      .map(
+                        (s) => DropdownMenuItem(
+                          value: s,
+                          child: Text(
+                            s.isEmpty
+                                ? 'الكل'
+                                : (AssignmentStatus.fromString(s)?.labelAr ??
+                                      s),
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      )
                       .toList(),
                   onChanged: (v) {
                     setState(() => statusFilter = v ?? '');
@@ -1451,10 +1740,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     : '${AssignmentHelper.finalTotalOf(raw).toStringAsFixed(2)}';
                 final statusLabel = isLegacy
                     ? statusStr
-                    : AssignmentStatus.fromString(statusStr)?.labelAr ?? statusStr;
+                    : AssignmentStatus.fromString(statusStr)?.labelAr ??
+                          statusStr;
                 final isActive = isLegacy
                     ? type == 1
-                    : (AssignmentStatus.fromString(statusStr)?.isActive ?? type == 1);
+                    : (AssignmentStatus.fromString(statusStr)?.isActive ??
+                          type == 1);
                 // حقول صفحة courier: public_id + المتبقي + الإلغاء + primary
                 final publicId = isLegacy
                     ? ''
@@ -1462,8 +1753,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 final remaining = isLegacy
                     ? 0.0
                     : AssignmentHelper.defaultCodCollected(raw);
-                final cancelled = !isLegacy &&
-                    AssignmentHelper.orderCancelled(raw);
+                final cancelled =
+                    !isLegacy && AssignmentHelper.orderCancelled(raw);
                 final primary = isLegacy
                     ? null
                     : AssignmentHelper.primaryNext(raw);
@@ -1472,14 +1763,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     : AssignmentStatus.fromString(primary ?? '');
                 // التقدم السريع المباشر فقط للحالات بلا حوارات (مثل الويب)؛
                 // failed/cancelled/delivered (مع متبقي) تُفتح في التفاصيل.
-                final needsDialog = st == null ||
+                final needsDialog =
+                    st == null ||
                     st == AssignmentStatus.failed ||
                     st == AssignmentStatus.cancelled ||
                     (st == AssignmentStatus.delivered && remaining > 0);
-                final quickLabel = (!isLegacy &&
-                        primary != null &&
-                        !cancelled &&
-                        st != null)
+                final quickLabel =
+                    (!isLegacy && primary != null && !cancelled && st != null)
                     ? 'التالي: ${st.labelAr}'
                     : null;
                 return OrderListCard(
@@ -1489,8 +1779,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   total: total,
                   status: statusLabel,
                   isActive: isActive,
-                  isReturn: !isLegacy &&
-                      AssignmentHelper.isReturnPickup(raw),
+                  isReturn: !isLegacy && AssignmentHelper.isReturnPickup(raw),
                   publicId: publicId,
                   remainingCod: remaining > 0
                       ? remaining.toStringAsFixed(2)
@@ -1539,7 +1828,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   bool loading = true;
   bool failed = false;
   bool updating = false;
-  String? proofPhotoPath;
 
   List<AssignmentStatus> get _nextParsed => allowedNext
       .map((s) => AssignmentStatus.fromString(s))
@@ -1554,13 +1842,16 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
   Future<void> _load() async {
     // Modern: assignmentById (DeliveryBoyAssignmentApiController::show)
-    var result = await app.api.assignmentById(widget.id);    Map<String, dynamic>? data = result.dataMaps.isNotEmpty
+    var result = await app.api.assignmentById(widget.id);
+    Map<String, dynamic>? data = result.dataMaps.isNotEmpty
         ? result.dataMaps.first
         : result.dataMap;
     // fallback legacy
     if (data.isEmpty || !result.ok) {
       final legacy = await app.api.orderById(widget.id);
-      data = legacy.dataMaps.isNotEmpty ? legacy.dataMaps.first : legacy.dataMap;
+      data = legacy.dataMaps.isNotEmpty
+          ? legacy.dataMaps.first
+          : legacy.dataMap;
       isLegacy = true;
       if (!mounted) return;
       setState(() {
@@ -1596,11 +1887,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   }
 
   Future<void> _handleStatusTap(AssignmentStatus target) async {
-    if (target == AssignmentStatus.delivered && proofPhotoPath == null) {
-      await _showProofModal(target);
-      return;
-    }
-    if (target == AssignmentStatus.failed || target == AssignmentStatus.cancelled) {
+    if (target == AssignmentStatus.failed ||
+        target == AssignmentStatus.cancelled) {
       await _showFailureReasonDialog(target);
       return;
     }
@@ -1617,53 +1905,14 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     await _performAssignmentUpdate(target);
   }
 
-  // إثبات التسليم اختياري — الصورة محلية للتأكيد فقط ولا تُرفع للسيرفر
-  // (الباك يقبل status/cod_collected فقط)، لذلك يوجد زر تخطي دائماً.
-  Future<void> _showProofModal(AssignmentStatus target) async {
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => ProofOfDeliverySheet(
-        photoPath: proofPhotoPath,
-        onTakePhoto: () async {
-          final file = await ImagePicker().pickImage(
-            source: ImageSource.camera,
-            requestFullMetadata: false,
-          );
-          if (!ctx.mounted) return;
-          if (file != null) {
-            if (mounted) setState(() => proofPhotoPath = file.path);
-            Navigator.pop(ctx, 'photo');
-          }
-        },
-        onFromGallery: () async {
-          final file = await ImagePicker().pickImage(
-            source: ImageSource.gallery,
-            requestFullMetadata: false,
-          );
-          if (!ctx.mounted) return;
-          if (file != null) {
-            if (mounted) setState(() => proofPhotoPath = file.path);
-            Navigator.pop(ctx, 'photo');
-          }
-        },
-        onSkip: () => Navigator.pop(ctx, 'skip'),
-      ),
-    );
-    if (!mounted) return;
-    if (action == 'photo' || action == 'skip') {
-      await _showCodDialog(target);
-    }
-  }
-
   Future<void> _showPaySellerDialog() async {
     final a = assignment ?? {};
     final suggest = AssignmentHelper.codToCollect(a) > 0
         ? AssignmentHelper.codToCollect(a)
         : AssignmentHelper.finalTotalOf(a);
     final ctrl = TextEditingController(
-        text: suggest > 0 ? suggest.toStringAsFixed(2) : '');
+      text: suggest > 0 ? suggest.toStringAsFixed(2) : '',
+    );
     String paidFrom = 'self';
     final ok = await showDialog<bool>(
       context: context,
@@ -1675,18 +1924,29 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             children: [
               TextField(
                 controller: ctrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
                   labelText: 'المبلغ المدفوع للمتجر',
                   hintText: '0.00',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
+                  suffixText: brandCurrency(),
                 ),
               ),
               const SizedBox(height: 12),
               SegmentedButton<String>(
                 segments: const [
-                  ButtonSegment(value: 'self', label: Text('من جيبي'), icon: Icon(Icons.wallet_outlined)),
-                  ButtonSegment(value: 'float', label: Text('من العهدة'), icon: Icon(Icons.account_balance_outlined)),
+                  ButtonSegment(
+                    value: 'self',
+                    label: Text('من جيبي'),
+                    icon: Icon(Icons.wallet_outlined),
+                  ),
+                  ButtonSegment(
+                    value: 'float',
+                    label: Text('من العهدة'),
+                    icon: Icon(Icons.account_balance_outlined),
+                  ),
                 ],
                 selected: {paidFrom},
                 onSelectionChanged: (s) => setD(() => paidFrom = s.first),
@@ -1699,8 +1959,14 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('تسجيل')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('تسجيل'),
+            ),
           ],
         ),
       ),
@@ -1740,26 +2006,39 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         ? serverDefault
         : (liability > 0 ? liability : 0);
     final ctrl = TextEditingController(
-        text: prefill > 0 ? prefill.toStringAsFixed(2) : '');
+      text: prefill > 0 ? prefill.toStringAsFixed(2) : '',
+    );
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('المبلغ المحصّل'),
+        title: const Text('المبلغ المحصّل'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('المطلوب تحصيله: ${liability.toStringAsFixed(2)}'),
-            SizedBox(height: 12),
+            Text('المطلوب تحصيله: ${formatMoney(liability)}'),
+            const SizedBox(height: 12),
             TextField(
               controller: ctrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'المبلغ المحصّل (COD)', hintText: '0.00'),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: InputDecoration(
+                labelText: 'المبلغ المحصّل (COD)',
+                hintText: '0.00',
+                suffixText: brandCurrency(),
+              ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text('تأكيد')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('تأكيد'),
+          ),
         ],
       ),
     );
@@ -1772,13 +2051,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       if (context.mounted) toast(context, 'المبلغ غير صحيح');
       return;
     }
-    // confirm
-    final confirm = await confirmAction(
-      context,
-      title: 'تحديث الحالة',
-      body: 'تغيير الحالة إلى ${target.labelAr}؟',
-    );
-    if (!confirm || !context.mounted) return;
     await _performAssignmentUpdate(target, codCollected: val);
   }
 
@@ -1786,31 +2058,95 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     final ctrl = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(target == AssignmentStatus.failed ? 'سبب الفشل' : 'سبب الإلغاء'),
-        content: TextField(
-          controller: ctrl,
-          maxLines: 3,
-          maxLength: 500,
-          decoration: const InputDecoration(hintText: 'اكتب السبب...', border: OutlineInputBorder()),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: Text(
+            target == AssignmentStatus.failed ? 'سبب الفشل' : 'سبب الإلغاء',
+          ),
+          content: TextField(
+            controller: ctrl,
+            maxLines: 3,
+            maxLength: 500,
+            autofocus: true,
+            onChanged: (_) => setD(() {}),
+            decoration: const InputDecoration(
+              hintText: 'اكتب السبب...',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: ctrl.text.trim().isEmpty
+                  ? null
+                  : () => Navigator.pop(ctx, true),
+              child: const Text('إرسال'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text('إرسال')),
-        ],
       ),
     );
     final reason = ctrl.text.trim();
     ctrl.dispose();
     if (ok != true || !context.mounted) return;
-    if (reason.isEmpty) {
-      toast(context, 'السبب مطلوب');
-      return;
-    }
     await _performAssignmentUpdate(target, failureReason: reason);
   }
 
-  Future<void> _performAssignmentUpdate(AssignmentStatus target, {String? failureReason, double? codCollected}) async {
+  Future<void> _markReturnRejectedBySeller() async {
+    final ctrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: const Text('التاجر رفض المرتجع'),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            maxLines: 3,
+            maxLength: 500,
+            onChanged: (_) => setD(() {}),
+            decoration: const InputDecoration(
+              labelText: 'سبب رفض التاجر (إلزامي)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('تراجع'),
+            ),
+            FilledButton(
+              onPressed: ctrl.text.trim().isEmpty
+                  ? null
+                  : () => Navigator.pop(ctx, true),
+              child: const Text('تسجيل الرفض'),
+            ),
+          ],
+        ),
+      ),
+    );
+    final reason = ctrl.text.trim();
+    ctrl.dispose();
+    if (ok != true || reason.isEmpty || !mounted) return;
+    setState(() => updating = true);
+    final result = await app.api.returnRejectedBySeller(
+      id: widget.id,
+      reason: reason,
+    );
+    if (!mounted) return;
+    setState(() => updating = false);
+    toast(context, result.ok ? 'تم تسجيل رفض التاجر للمرتجع' : result.message);
+    if (result.ok) _load();
+  }
+
+  Future<void> _performAssignmentUpdate(
+    AssignmentStatus target, {
+    String? failureReason,
+    double? codCollected,
+  }) async {
     setState(() => updating = true);
     ApiResult result;
     if (target == AssignmentStatus.accepted) {
@@ -1818,7 +2154,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       // مهام الأدمن ترجع نجاحاً مباشرة، والمهام المقبولة مسبقاً تفشل —
       // نحاول status API كبديل لأي فشل قبول
       if (!result.ok) {
-        result = await app.api.updateAssignmentStatus(id: widget.id, status: target.apiValue, failureReason: failureReason, codCollected: codCollected);
+        result = await app.api.updateAssignmentStatus(
+          id: widget.id,
+          status: target.apiValue,
+          failureReason: failureReason,
+          codCollected: codCollected,
+        );
       }
     } else {
       result = await app.api.updateAssignmentStatus(
@@ -1851,7 +2192,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         body: const DetailsSkeleton(),
       );
     }
-    if (failed) {      return Scaffold(
+    if (failed) {
+      return Scaffold(
         appBar: AppBar(title: Text('طلب ${widget.id}')),
         body: Refreshable(
           onRefresh: _reload,
@@ -1870,11 +2212,15 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         ? J.maps(a['items'] ?? a['order_items'])
         : AssignmentHelper.itemsOf(a);
     final mobile = isLegacy ? J.str(a['mobile']) : AssignmentHelper.mobileOf(a);
-    final address = isLegacy ? J.str(a['address']) : AssignmentHelper.addressOf(a);
+    final address = isLegacy
+        ? J.str(a['address'])
+        : AssignmentHelper.addressOf(a);
     final storeName = isLegacy
         ? J.str(a['store_name'] ?? a['seller_name'] ?? 'المتجر')
         : AssignmentHelper.storeName(a);
-    final currentStatusStr = J.str(a['status'] ?? a['order_status'] ?? 'assigned');
+    final currentStatusStr = J.str(
+      a['status'] ?? a['order_status'] ?? 'assigned',
+    );
     final currentStatus = AssignmentStatus.fromString(currentStatusStr);
     // طبق الأصل withStatusMeta: full_timeline + timeline_labels من السيرفر أولاً،
     // ثم courierVisibleTimeline، ثم الثابت المحلي للتوافق.
@@ -1884,18 +2230,19 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     int stepIndex;
     if (!isLegacy && serverTimeline.isNotEmpty) {
       steps = serverTimeline
-          .map((s) =>
-              serverLabels[s]?.isNotEmpty == true
-                  ? serverLabels[s]!
-                  : (AssignmentStatus.fromString(s)?.labelAr ?? s))
+          .map(
+            (s) => serverLabels[s]?.isNotEmpty == true
+                ? serverLabels[s]!
+                : (AssignmentStatus.fromString(s)?.labelAr ?? s),
+          )
           .toList();
       final idx = serverTimeline.indexWhere(
-          (s) => s.toLowerCase() == currentStatusStr.toLowerCase());
+        (s) => s.toLowerCase() == currentStatusStr.toLowerCase(),
+      );
       stepIndex = idx >= 0 ? idx : steps.length - 1;
       // المرتجع له 5 خطوات بدون picking_up — نعرضها كما يرسلها السيرفر تماماً.
     } else if (!isLegacy && currentStatus != null) {
-      final visible =
-          AssignmentStatus.courierVisibleTimeline(currentStatus);
+      final visible = AssignmentStatus.courierVisibleTimeline(currentStatus);
       steps = visible.map((e) => e.labelAr).toList();
       final idx = visible.indexOf(currentStatus);
       stepIndex = idx >= 0 ? idx : 0;
@@ -1903,12 +2250,17 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       steps = kAssignmentSteps;
       stepIndex = currentStatus != null
           ? timelineIndexFromAssignmentStatus(
-              currentStatus.apiValue, kAssignmentSteps)
+              currentStatus.apiValue,
+              kAssignmentSteps,
+            )
           : timelineIndexFromStatus(currentStatusStr, kAssignmentSteps);
     }
     final codToCollect = isLegacy ? 0.0 : AssignmentHelper.codToCollect(a);
     final codCollected = isLegacy ? 0.0 : AssignmentHelper.codCollected(a);
-    final codLiability = (codToCollect - codCollected).clamp(0, double.infinity);
+    final codLiability = (codToCollect - codCollected).clamp(
+      0,
+      double.infinity,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.greyBg,
@@ -1928,286 +2280,15 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
-        children: [
-          DeliveryMapView(
-            pickupLabel: storeName,
-            dropoffLabel: address,
-            onNavigate: () => openMapsNavigation(address),
-          ),
-          SizedBox(height: 16),
-          OrderProgressTimeline(
-            steps: steps,
-            currentIndex: stepIndex,
-          ),
-          SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.greyBorder),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isLegacy ? J.str(a['user_name']) : AssignmentHelper.customerNameOf(a),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.navy,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  address,
-                  style: const TextStyle(color: AppColors.greyText),
-                ),
-                if (!isLegacy) ...[
-                  SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.orange.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          isLegacy
-                              ? (currentStatus?.labelAr ?? currentStatusStr)
-                              : AssignmentHelper.statusLabel(
-                                  a, currentStatus ?? AssignmentStatus.assigned),
-                          style: TextStyle(fontSize: 12, color: AppColors.orange, fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Text('ID: ${a['id']}', style: const TextStyle(fontSize: 12, color: AppColors.greyText)),
-                    ],
-                  ),
-                  if (codToCollect > 0) ...[
-                    SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: AppColors.greyBg, borderRadius: BorderRadius.circular(12)),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('المطلوب تحصيله', style: TextStyle(fontSize: 12, color: AppColors.greyText)),
-                          Text('${codLiability.toStringAsFixed(2)} / ${codToCollect.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.navy)),
-                        ],
-                      ),
-                    ),
-                  ],
-                  // بطاقة الدفع المسبق للمتجر (جديد): تعرض ما دُفع + زر التسجيل.
-                  if (!isLegacy) ...[
-                    SizedBox(height: 8),
-                    Builder(builder: (_) {
-                      final paid = AssignmentHelper.paidToSeller(a);
-                      final from = AssignmentHelper.paidFrom(a);
-                      final payer = AssignmentHelper.payerMode(a);
-                      final isClosed = currentStatus?.isTerminal ?? false;
-                      final platformPaid = paid > 0 && from == 'platform';
-                      return Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: paid > 0
-                              ? AppColors.success.withValues(alpha: 0.08)
-                              : AppColors.orange.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: paid > 0 ? AppColors.success : AppColors.orange,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    platformPaid
-                                        ? 'المنصة دفعت للمتجر: ${paid.toStringAsFixed(2)} — لا تدفع شيئاً'
-                                        : paid > 0
-                                            ? 'مدفوع للمتجر: ${paid.toStringAsFixed(2)} (${from == 'float' ? 'من العهدة' : 'من جيبي'})'
-                                            : payer == 'platform'
-                                                ? 'الدفع للمتجر على المنصة — لا تدفع من جيبك'
-                                                : payer == 'float'
-                                                    ? 'المطلوب: ادفع للمتجر من العهدة (${codToCollect.toStringAsFixed(2)})'
-                                                    : 'لم تدفع للمتجر بعد — المطلوب نحو ${codToCollect.toStringAsFixed(2)}',
-                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                                  ),
-                                ),
-                                if (paid > 0)
-                                  Icon(Icons.check_circle, color: AppColors.success, size: 18),
-                              ],
-                            ),
-                            if (paid <= 0 && payer != 'platform' && !isClosed && !orderCancelled) ...[
-                              const SizedBox(height: 8),
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  icon: const Icon(Icons.store_outlined, size: 18),
-                                  label: const Text('دفعت للمتجر — تسجيل المبلغ'),
-                                  onPressed: () => _showPaySellerDialog(),
-                                ),
-                              ),
-                              const Text(
-                                'سجّل ما دفعته مقدماً لصاحب المتجر ليُخصم من تسويتك ولا تُطالب بتوريده.',
-                                style: TextStyle(fontSize: 11, color: AppColors.greyText),
-                              ),
-                            ],
-                          ],
-                        ),
-                      );
-                    }),
-                  ],
-                ],
-                if (mobile.isNotEmpty) ...[
-                  SizedBox(height: 12),
-                  ContactActions(
-                    phone: mobile,
-                    onCall: () => openTel(mobile),
-                    onMessage: () => openSms(mobile),
-                    onCopy: () => copyText(context, mobile),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          // بطاقة المرتجع (assignment_type=return_pickup) — طبق الأصل الباك اند
-          if (!isLegacy && AssignmentHelper.isReturnPickup(a)) ...[
-            Builder(builder: (_) {
-              final ri = AssignmentHelper.returnItem(a);
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.orange),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('استلام مرتجع',
-                        style: TextStyle(fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 8),
-                    Text(
-                        'المنتج: ${J.str(ri['product_name'] ?? ri['variant_name'] ?? '—')}'),
-                    Text(
-                        'المبلغ المسترد: ${ri['refund_amount'] ?? '—'}'),
-                    Text(
-                        'حالة المرتجع: ${J.str(ri['return_status'] ?? '')}'),
-                    if (J.str(ri['return_rejection_reason']).isNotEmpty)
-                      Text(
-                          'سبب الرفض: ${ri['return_rejection_reason']}'),
-                  ],
-                ),
-              );
-            }),
-            SizedBox(height: 16),
-          ],
-          // سجل الأحداث events من السيرفر
-          if (!isLegacy && AssignmentHelper.events(a).isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.greyBorder),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('سجل التتبع',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  ...AssignmentHelper.events(a).take(10).map((e) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          '${J.str(e['to_status'] ?? e['status'] ?? '')} — ${J.str(e['created_at'] ?? '')}',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.greyText),
-                        ),
-                      )),
-                ],
-              ),
+          children: [
+            DeliveryMapView(
+              pickupLabel: storeName,
+              dropoffLabel: address,
+              onNavigate: () => openMapsNavigation(address),
             ),
             SizedBox(height: 16),
-          ],
-          SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.greyBorder),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  !isLegacy && AssignmentHelper.orderPublicId(a).isNotEmpty
-                      ? 'تفاصيل الطلب ${AssignmentHelper.orderPublicId(a)}'
-                      : 'تفاصيل الطلب',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
-                  ),
-                ),
-                SizedBox(height: 8),
-                if (items.isEmpty)
-                  Text('لا توجد عناصر', style: TextStyle(color: AppColors.greyText)),
-                ...items.map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            J.str(item['product_name'] ?? item['name'] ?? item['title']),
-                          ),
-                        ),
-                        Text('x${item['quantity'] ?? 1}'),
-                        SizedBox(width: 8),
-                        Text(J.str(item['price'] ?? item['sub_total'] ?? ''), style: const TextStyle(color: AppColors.greyText, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                ),
-                const Divider(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('الإجمالي'),
-                    Text(
-                      isLegacy ? J.str(a['final_total']) : '${AssignmentHelper.finalTotalOf(a).toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                        color: AppColors.orange,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 4),
-                Text(
-                  isLegacy
-                      ? 'رسوم التوصيل: ${a['delivery_charge'] ?? 0} • ${J.str(a['payment_method'])}'
-                      : 'COD: ${codToCollect.toStringAsFixed(2)} • محصّل: ${codCollected.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.greyText,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 16),
-          // البائعون — مثل قسم Sellers في صفحة courier.
-          if (!isLegacy &&
-              AssignmentHelper.sellersOf(a).isNotEmpty) ...[
+            OrderProgressTimeline(steps: steps, currentIndex: stepIndex),
+            SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -2219,157 +2300,561 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'البائعون (${AssignmentHelper.sellersOf(a).length}) — مندوب واحد للكل',
+                    isLegacy
+                        ? J.str(a['user_name'])
+                        : AssignmentHelper.customerNameOf(a),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    address,
+                    style: const TextStyle(color: AppColors.greyText),
+                  ),
+                  if (!isLegacy) ...[
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.orange.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            isLegacy
+                                ? (currentStatus?.labelAr ?? currentStatusStr)
+                                : AssignmentHelper.statusLabel(
+                                    a,
+                                    currentStatus ?? AssignmentStatus.assigned,
+                                  ),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.orange,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'ID: ${a['id']}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.greyText,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (codToCollect > 0) ...[
+                      SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.greyBg,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'المطلوب تحصيله',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.greyText,
+                              ),
+                            ),
+                            Text(
+                              '${formatMoney(codLiability)} / ${formatMoney(codToCollect)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0A2540),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    // بطاقة الدفع المسبق للمتجر (جديد): تعرض ما دُفع + زر التسجيل.
+                    if (!isLegacy) ...[
+                      SizedBox(height: 8),
+                      Builder(
+                        builder: (_) {
+                          final paid = AssignmentHelper.paidToSeller(a);
+                          final from = AssignmentHelper.paidFrom(a);
+                          final payer = AssignmentHelper.payerMode(a);
+                          final isClosed = currentStatus?.isTerminal ?? false;
+                          final platformPaid = paid > 0 && from == 'platform';
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: paid > 0
+                                  ? AppColors.success.withValues(alpha: 0.08)
+                                  : AppColors.orange.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: paid > 0
+                                    ? AppColors.success
+                                    : AppColors.orange,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        platformPaid
+                                            ? 'المنصة دفعت للمتجر: ${formatMoney(paid)} — لا تدفع شيئاً'
+                                            : paid > 0
+                                            ? 'مدفوع للمتجر: ${formatMoney(paid)} (${from == 'float' ? 'من العهدة' : 'من جيبي'})'
+                                            : payer == 'platform'
+                                            ? 'الدفع للمتجر على المنصة — لا تدفع من جيبك'
+                                            : payer == 'float'
+                                            ? 'المطلوب: ادفع للمتجر من العهدة (${formatMoney(codToCollect)})'
+                                            : 'لم تدفع للمتجر بعد — المطلوب نحو ${formatMoney(codToCollect)}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                    if (paid > 0)
+                                      Icon(
+                                        Icons.check_circle,
+                                        color: AppColors.success,
+                                        size: 18,
+                                      ),
+                                  ],
+                                ),
+                                if (paid <= 0 &&
+                                    payer != 'platform' &&
+                                    !isClosed &&
+                                    !orderCancelled) ...[
+                                  const SizedBox(height: 8),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton.icon(
+                                      icon: const Icon(
+                                        Icons.store_outlined,
+                                        size: 18,
+                                      ),
+                                      label: const Text(
+                                        'دفعت للمتجر — تسجيل المبلغ',
+                                      ),
+                                      onPressed: () => _showPaySellerDialog(),
+                                    ),
+                                  ),
+                                  const Text(
+                                    'سجّل ما دفعته مقدماً لصاحب المتجر ليُخصم من تسويتك ولا تُطالب بتوريده.',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.greyText,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ],
+                  if (mobile.isNotEmpty) ...[
+                    SizedBox(height: 12),
+                    ContactActions(
+                      phone: mobile,
+                      messageLabel: 'واتساب',
+                      messageIcon: Icons.chat_outlined,
+                      onCall: () => openTel(mobile),
+                      onMessage: () => openWhatsApp(
+                        mobile,
+                        text: 'مرحباً، أنا مندوب التوصيل بخصوص طلبك',
+                      ),
+                      onCopy: () => copyText(context, mobile),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            // بطاقة المرتجع (assignment_type=return_pickup) — طبق الأصل الباك اند
+            if (!isLegacy && AssignmentHelper.isReturnPickup(a)) ...[
+              Builder(
+                builder: (_) {
+                  final ri = AssignmentHelper.returnItem(a);
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.orange),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'استلام مرتجع',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'المنتج: ${J.str(ri['product_name'] ?? ri['variant_name'] ?? '—')}',
+                        ),
+                        Text(
+                          'المبلغ المسترد: ${formatMoney(ri['refund_amount'] ?? '—')}',
+                        ),
+                        Text(
+                          'حالة المرتجع: ${J.str(ri['return_status'] ?? '')}',
+                        ),
+                        if (J.str(ri['return_rejection_reason']).isNotEmpty)
+                          Text('سبب الرفض: ${ri['return_rejection_reason']}'),
+                        if (!(currentStatus?.isTerminal ?? false)) ...[
+                          const SizedBox(height: 10),
+                          OutlinedButton.icon(
+                            onPressed: updating
+                                ? null
+                                : _markReturnRejectedBySeller,
+                            icon: const Icon(Icons.storefront_outlined),
+                            label: const Text('التاجر رفض المرتجع'),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              ),
+              SizedBox(height: 16),
+            ],
+            // سجل الأحداث events من السيرفر
+            if (!isLegacy && AssignmentHelper.events(a).isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.greyBorder),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'سجل التتبع',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 8),
+                    ...AssignmentHelper.events(a)
+                        .take(10)
+                        .map(
+                          (e) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Text(
+                              '${J.str(e['to_status'] ?? e['status'] ?? '')} — ${J.str(e['created_at'] ?? '')}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.greyText,
+                              ),
+                            ),
+                          ),
+                        ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+            ],
+            SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.greyBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    !isLegacy && AssignmentHelper.orderPublicId(a).isNotEmpty
+                        ? 'تفاصيل الطلب ${AssignmentHelper.orderPublicId(a)}'
+                        : 'تفاصيل الطلب',
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       color: AppColors.navy,
                     ),
                   ),
                   SizedBox(height: 8),
-                  ...AssignmentHelper.sellersOf(a).map((s) => Padding(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${s['name']}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600),
+                  if (items.isEmpty)
+                    Text(
+                      'لا توجد عناصر',
+                      style: TextStyle(color: AppColors.greyText),
+                    ),
+                  ...items.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              J.str(
+                                item['product_name'] ??
+                                    item['name'] ??
+                                    item['title'],
                               ),
                             ),
-                            Text(
-                              'تحضير: ${s['fulfillment']} | توصيل: ${s['delivery']} | أصناف: ${s['items']}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.greyText,
-                              ),
+                          ),
+                          Text('x${item['quantity'] ?? 1}'),
+                          SizedBox(width: 8),
+                          Text(
+                            formatMoney(
+                              item['price'] ?? item['sub_total'] ?? '',
                             ),
-                          ],
-                        ),
-                      )),
-                ],
-              ),
-            ),
-            SizedBox(height: 16),
-          ],
-          // سبب الفشل الأخير — مثل Last reason في الويب.
-          if (!isLegacy &&
-              AssignmentHelper.failureReasonOf(a).isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.error.withValues(alpha: 0.25),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 16,
-                    color: AppColors.error,
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'آخر سبب: ${AssignmentHelper.failureReasonOf(a)}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.error,
+                            style: const TextStyle(
+                              color: AppColors.greyText,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
+                  ),
+                  const Divider(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('الإجمالي'),
+                      Text(
+                        isLegacy
+                            ? formatMoney(a['final_total'])
+                            : formatMoney(AssignmentHelper.finalTotalOf(a)),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                          color: AppColors.orange,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    isLegacy
+                        ? 'رسوم التوصيل: ${formatMoney(a['delivery_charge'] ?? 0)} • ${J.str(a['payment_method'])}'
+                        : 'COD: ${formatMoney(codToCollect)} • محصّل: ${formatMoney(codCollected)}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.greyText,
                     ),
                   ),
                 ],
               ),
             ),
             SizedBox(height: 16),
-          ],
-          if (updating)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: InlineLoader(message: 'جاري تحديث الحالة...'),
-            )
-          else if (isLegacy)
-            const Padding(
-              padding: EdgeInsets.all(8),
-              child: Text('الوضع القديم: يرجى تحديث الخادم لدعم الحالات الحديثة', textAlign: TextAlign.center, style: TextStyle(color: AppColors.greyText, fontSize: 12)),
-            )
-          else if (orderCancelled) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12)),
-              child: Row(
-                children: [
-                  Icon(Icons.cancel_outlined, color: AppColors.error),
-                  SizedBox(width: 8),
-                  Expanded(
-                      child: Text('الطلب ملغي من المصدر — لا توجد إجراءات متاحة',
-                          style: TextStyle(
-                              color: AppColors.error,
-                              fontWeight: FontWeight.w700))),
-                ],
-              ),
-            ),
-          ] else if (_nextParsed.isNotEmpty) ...[
-            const SectionHeader('تحديث الحالة - مطابقة للـ Backend'),
-            if (requiresAccept)
+            // البائعون — مثل قسم Sellers في صفحة courier.
+            if (!isLegacy && AssignmentHelper.sellersOf(a).isNotEmpty) ...[
               Container(
-                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.greyBorder),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'البائعون (${AssignmentHelper.sellersOf(a).length}) — مندوب واحد للكل',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    ...AssignmentHelper.sellersOf(a).map(
+                      (s) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${s['name']}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 2,
+                              children: [
+                                Text(
+                                  'تحضير: ${s['fulfillment']}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.greyText,
+                                  ),
+                                ),
+                                Text(
+                                  'توصيل: ${s['delivery']}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.greyText,
+                                  ),
+                                ),
+                                Text(
+                                  'أصناف: ${s['items']}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.greyText,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+            ],
+            // سبب الفشل الأخير — مثل Last reason في الويب.
+            if (!isLegacy &&
+                AssignmentHelper.failureReasonOf(a).isNotEmpty) ...[
+              Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                    color: AppColors.orange.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12)),
-                child: const Text(
-                    'مطلوب القبول أولاً (requires_accept من السيرفر)',
-                    style: TextStyle(fontWeight: FontWeight.w700)),
-              ),
-            ..._nextParsed.map((st) {
-              // إخفاء الإلغاء عندما يمنعه السيرفر (مهام الأدمن adminAssigned)
-              if (st == AssignmentStatus.cancelled && !canCancel) {
-                return const SizedBox.shrink();
-              }
-              final isDelivered = st == AssignmentStatus.delivered;
-              final isFailed = st == AssignmentStatus.failed;
-              final isPrimary = primaryNext == st.apiValue;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: DriverActionButton(
-                  label: isPrimary ? '${st.labelAr} • التالي' : st.labelAr,
-                  icon: isDelivered
-                      ? Icons.check_circle
-                      : isFailed
-                          ? Icons.error_outline
-                          : Icons.local_shipping,
-                  onPressed: () => _handleStatusTap(st),
+                  color: AppColors.error.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.25),
+                  ),
                 ),
-              );
-            }),
-            if (_nextParsed.contains(AssignmentStatus.pickedUp)) ...[
-              SizedBox(height: 8),
-              SlideToConfirm(
-                label: 'اسحب لتأكيد الاستلام',
-                onConfirmed: () => _handleStatusTap(AssignmentStatus.pickedUp),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 16, color: AppColors.error),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'آخر سبب: ${AssignmentHelper.failureReasonOf(a)}',
+                        style: TextStyle(fontSize: 12, color: AppColors.error),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+            ],
+            if (updating)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: InlineLoader(message: 'جاري تحديث الحالة...'),
+              )
+            else if (isLegacy)
+              const Padding(
+                padding: EdgeInsets.all(8),
+                child: Text(
+                  'الوضع القديم: يرجى تحديث الخادم لدعم الحالات الحديثة',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.greyText, fontSize: 12),
+                ),
+              )
+            else if (orderCancelled) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.cancel_outlined, color: AppColors.error),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'الطلب ملغي من المصدر — لا توجد إجراءات متاحة',
+                        style: TextStyle(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else if (_nextParsed.isNotEmpty) ...[
+              const SectionHeader('تحديث الحالة - مطابقة للـ Backend'),
+              if (requiresAccept)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'مطلوب القبول أولاً (requires_accept من السيرفر)',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ..._nextParsed.map((st) {
+                // إخفاء الإلغاء عندما يمنعه السيرفر (مهام الأدمن adminAssigned)
+                if (st == AssignmentStatus.cancelled && !canCancel) {
+                  return const SizedBox.shrink();
+                }
+                final isDelivered = st == AssignmentStatus.delivered;
+                final isFailed = st == AssignmentStatus.failed;
+                final isPrimary = primaryNext == st.apiValue;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: DriverActionButton(
+                    label: isPrimary ? '${st.labelAr} • التالي' : st.labelAr,
+                    icon: isDelivered
+                        ? Icons.check_circle
+                        : isFailed
+                        ? Icons.error_outline
+                        : Icons.local_shipping,
+                    onPressed: () => _handleStatusTap(st),
+                  ),
+                );
+              }),
+              if (_nextParsed.contains(AssignmentStatus.pickedUp)) ...[
+                SizedBox(height: 8),
+                SlideToConfirm(
+                  label: 'اسحب لتأكيد الاستلام',
+                  onConfirmed: () =>
+                      _handleStatusTap(AssignmentStatus.pickedUp),
+                ),
+              ],
+            ] else if (currentStatus?.isTerminal ?? false) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: AppColors.success),
+                    SizedBox(width: 8),
+                    Text(
+                      'انتهى: ${currentStatus?.labelAr ?? ''}',
+                      style: TextStyle(
+                        color: AppColors.success,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
-          ] else if (currentStatus?.isTerminal ?? false) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-              child: Row(
-                children: [
-                  Icon(Icons.check_circle, color: AppColors.success),
-                  SizedBox(width: 8),
-                  Text('انتهى: ${currentStatus?.labelAr ?? ''}', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.w700)),
-                ],
-              ),
-            ),
           ],
-        ],
         ),
       ),
     );
@@ -2388,6 +2873,7 @@ class LiveDeliveryScreen extends StatefulWidget {
 class _LiveDeliveryScreenState extends State<LiveDeliveryScreen> {
   Map<String, dynamic>? assignment;
   bool loading = true;
+  String? error;
 
   @override
   void initState() {
@@ -2396,11 +2882,31 @@ class _LiveDeliveryScreenState extends State<LiveDeliveryScreen> {
   }
 
   Future<void> _load() async {
+    setState(() {
+      loading = true;
+      error = null;
+    });
     var result = await app.api.assignmentById(widget.id);
-    Map<String, dynamic>? data = result.dataMaps.isNotEmpty ? result.dataMaps.first : result.dataMap;
+    Map<String, dynamic>? data = result.dataMaps.isNotEmpty
+        ? result.dataMaps.first
+        : result.dataMap;
     if (data.isEmpty || !result.ok) {
       final legacy = await app.api.orderById(widget.id);
-      data = legacy.dataMaps.isNotEmpty ? legacy.dataMaps.first : legacy.dataMap;
+      data = legacy.dataMaps.isNotEmpty
+          ? legacy.dataMaps.first
+          : legacy.dataMap;
+      if (data.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          loading = false;
+          error = legacy.ok
+              ? 'لا توجد بيانات لهذه المهمة'
+              : (legacy.message.isEmpty
+                    ? 'تعذر تحميل تفاصيل التوصيل'
+                    : legacy.message);
+        });
+        return;
+      }
     }
     if (!mounted) return;
     setState(() {
@@ -2421,9 +2927,7 @@ class _LiveDeliveryScreenState extends State<LiveDeliveryScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(8),
                 child: IconButton.filled(
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.navy,
-                  ),
+                  style: IconButton.styleFrom(backgroundColor: AppColors.navy),
                   onPressed: () => context.pop(),
                   icon: Icon(Icons.arrow_forward, color: AppColors.white),
                 ),
@@ -2434,16 +2938,56 @@ class _LiveDeliveryScreenState extends State<LiveDeliveryScreen> {
       );
     }
 
+    if (error != null) {
+      return Scaffold(
+        backgroundColor: AppColors.navy,
+        appBar: AppBar(
+          backgroundColor: AppColors.navy,
+          foregroundColor: AppColors.white,
+          title: const Text('التوصيل المباشر'),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.cloud_off_outlined,
+                  color: Colors.white70,
+                  size: 42,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: _load,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('إعادة المحاولة'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final a = assignment ?? {};
     final isLegacy = a.containsKey('order_id') || a['_legacy'] == true;
-    final storeName = isLegacy ? J.str(a['store_name'] ?? a['seller_name'] ?? 'المتجر') : AssignmentHelper.storeName(a);
-    final address = isLegacy ? J.str(a['address']) : AssignmentHelper.addressOf(a);
+    final storeName = isLegacy
+        ? J.str(a['store_name'] ?? a['seller_name'] ?? 'المتجر')
+        : AssignmentHelper.storeName(a);
+    final address = isLegacy
+        ? J.str(a['address'])
+        : AssignmentHelper.addressOf(a);
     final earnings = isLegacy
         ? J.str(a['delivery_charge'] ?? a['final_total'] ?? '—')
         : '${AssignmentHelper.codToCollect(a).toStringAsFixed(2)}';
-    final distance = J.str(
-      a['distance'] ?? a['delivery_distance'] ?? '—',
-    );
+    final distance = J.str(a['distance'] ?? a['delivery_distance'] ?? '—');
 
     return Scaffold(
       backgroundColor: AppColors.navy,
@@ -2461,9 +3005,7 @@ class _LiveDeliveryScreenState extends State<LiveDeliveryScreen> {
             child: Padding(
               padding: const EdgeInsets.all(8),
               child: IconButton.filled(
-                style: IconButton.styleFrom(
-                  backgroundColor: AppColors.navy,
-                ),
+                style: IconButton.styleFrom(backgroundColor: AppColors.navy),
                 onPressed: () => context.pop(),
                 icon: Icon(Icons.arrow_forward, color: AppColors.white),
               ),
@@ -2479,7 +3021,7 @@ class _LiveDeliveryScreenState extends State<LiveDeliveryScreen> {
               distance: distance,
               earnings: earnings,
               onNavigate: () => openMapsNavigation(address),
-              onViewDetails: () => context.push('/order/${widget.id}'),
+              onViewDetails: () => context.push('/assignment/${widget.id}'),
             ),
           ),
         ],
@@ -2566,13 +3108,13 @@ class _CashScreenState extends State<CashScreen> {
         final b1 = i < bytes.length ? bytes[i++] : -1;
         final b2 = i < bytes.length ? bytes[i++] : -1;
         final n = (b0 << 16) | ((b1 >= 0 ? b1 : 0) << 8) | (b2 >= 0 ? b2 : 0);
-        out += chars[(n >> 18) & 63] +
+        out +=
+            chars[(n >> 18) & 63] +
             chars[(n >> 12) & 63] +
             (b1 >= 0 ? chars[(n >> 6) & 63] : '=') +
             (b2 >= 0 ? chars[n & 63] : '=');
       }
-      final ext =
-          file.path.toLowerCase().endsWith('.png') ? 'png' : 'jpeg';
+      final ext = file.path.toLowerCase().endsWith('.png') ? 'png' : 'jpeg';
       setState(() {
         payReceipt = 'data:image/$ext;base64,$out';
         payReceiptName = file.path.split('/').last;
@@ -2585,7 +3127,10 @@ class _CashScreenState extends State<CashScreen> {
   Future<void> recordSellerPayment() async {
     final assignmentId = int.tryParse(payAssignmentCtrl.text.trim());
     final amount = double.tryParse(payAmountCtrl.text.trim());
-    if (assignmentId == null || assignmentId <= 0 || amount == null || amount <= 0) {
+    if (assignmentId == null ||
+        assignmentId <= 0 ||
+        amount == null ||
+        amount <= 0) {
       toast(context, 'أدخل رقم المهمة ومبلغاً صحيحاً');
       return;
     }
@@ -2612,7 +3157,7 @@ class _CashScreenState extends State<CashScreen> {
       });
       _load();
     } else {
-      toast(context, res.message);
+      setState(() => error = res.message);
     }
   }
 
@@ -2636,7 +3181,7 @@ class _CashScreenState extends State<CashScreen> {
       body: FetchBody(
         loading: loading,
         onRefresh: _load,
-        isEmpty: items.isEmpty,
+        isEmpty: items.isEmpty && finance.isEmpty,
         error: error,
         emptyText: 'لا توجد عمليات تحصيل',
         emptyIcon: Icons.payments_outlined,
@@ -2669,10 +3214,7 @@ class _CashScreenState extends State<CashScreen> {
                 onTap: () async {
                   final s = await pickDate(context);
                   if (s == null || !context.mounted) return;
-                  final e = await pickDate(
-                    context,
-                    initial: DateTime.now(),
-                  );
+                  final e = await pickDate(context, initial: DateTime.now());
                   if (e == null || !context.mounted) return;
                   setState(() {
                     startDate = s;
@@ -2688,10 +3230,10 @@ class _CashScreenState extends State<CashScreen> {
             Card(
               child: ListTile(
                 title: Text(
-                  'نقداً في اليد: ${data['cash_in_hand'] ?? finance['cash_in_hand'] ?? 0}',
+                  'نقداً في اليد: ${formatMoney(data['cash_in_hand'] ?? finance['cash_in_hand'] ?? 0)}',
                 ),
                 subtitle: Text(
-                  'إجمالي المحصّل: ${data['cash_collected'] ?? 0}',
+                  'إجمالي المحصّل: ${formatMoney(data['cash_collected'] ?? 0)}',
                 ),
               ),
             ),
@@ -2704,11 +3246,11 @@ class _CashScreenState extends State<CashScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'العهدة التشغيلية: ${finance['float_balance'] ?? 0}',
+                        'العهدة التشغيلية: ${formatMoney(finance['float_balance'] ?? 0)}',
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       Text(
-                        'صافي التوريد للأدمن: ${finance['net_to_remit'] ?? 0}',
+                        'صافي التوريد للأدمن: ${formatMoney(finance['net_to_remit'] ?? 0)}',
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           color: J.d(finance['net_to_remit']) > 0
@@ -2718,11 +3260,11 @@ class _CashScreenState extends State<CashScreen> {
                       ),
                       if (J.d(finance['pending_self_claim']) > 0)
                         Text(
-                          'منها ذمة لك (دفعت من جيبك): ${finance['pending_self_claim']}',
+                          'منها ذمة لك (دفعت من جيبك): ${formatMoney(finance['pending_self_claim'])}',
                           style: const TextStyle(fontSize: 12),
                         ),
                       Text(
-                        'متبقٍّ تحصيله: ${finance['cod_liability'] ?? 0}',
+                        'متبقٍّ تحصيله: ${formatMoney(finance['cod_liability'] ?? 0)}',
                         style: const TextStyle(fontSize: 12),
                       ),
                     ],
@@ -2743,7 +3285,7 @@ class _CashScreenState extends State<CashScreen> {
                     ),
                   ),
                   child: Text(
-                    'تجاوزت سقف النقدية (${finance['max_cash_in_hand'] ?? ''}) — لن تُسند لك مهام جديدة حتى التوريد.',
+                    'تجاوزت سقف النقدية (${formatMoney(finance['max_cash_in_hand'] ?? 0)}) — لن تُسند لك مهام جديدة حتى التوريد.',
                     style: const TextStyle(
                       color: Colors.red,
                       fontSize: 12,
@@ -2774,31 +3316,38 @@ class _CashScreenState extends State<CashScreen> {
                       ...liabilities.map(
                         (job) => ListTile(
                           dense: true,
+                          contentPadding: EdgeInsets.zero,
                           title: Text(
-                            '#${job['id']} • ${job['status'] ?? ''} • المتبقي ${job['remaining_cod'] ?? ''}',
+                            '#${job['id']} • ${job['status'] ?? ''} • المتبقي ${formatMoney(job['remaining_cod'] ?? 0)}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(fontSize: 12),
                           ),
                           subtitle: Text(
-                            job['payer_mode'] == 'platform'
-                                ? 'المنصة تدفع — لا تدفع'
-                                : (job['payer_mode'] == 'float'
-                                    ? 'ادفع من العهدة'
-                                    : 'ادفع من جيبك'),
+                            [
+                              job['payer_mode'] == 'platform'
+                                  ? 'المنصة تدفع — لا تدفع'
+                                  : (job['payer_mode'] == 'float'
+                                        ? 'ادفع من العهدة'
+                                        : 'ادفع من جيبك'),
+                              if (J.d(job['paid_to_seller']) > 0)
+                                'معتمد ✓'
+                              else if (J.d(job['pending_pay_amount']) > 0)
+                                'قيد المراجعة: ${formatMoney(job['pending_pay_amount'])}',
+                            ].join(' • '),
                             style: const TextStyle(fontSize: 11),
                           ),
-                          trailing: (J.d(job['paid_to_seller']) > 0)
-                              ? const Text('✓ معتمد')
-                              : (J.d(job['pending_pay_amount']) > 0
-                                  ? Text(
-                                      'قيد المراجعة: ${job['pending_pay_amount']}',
-                                    )
-                                  : TextButton(
-                                      onPressed: () => setState(
-                                        () => payAssignmentCtrl.text =
-                                            '${job['id']}',
-                                      ),
-                                      child: const Text('اختيار'),
-                                    )),
+                          trailing:
+                              (J.d(job['paid_to_seller']) > 0 ||
+                                  J.d(job['pending_pay_amount']) > 0)
+                              ? null
+                              : TextButton(
+                                  onPressed: () => setState(
+                                    () =>
+                                        payAssignmentCtrl.text = '${job['id']}',
+                                  ),
+                                  child: const Text('اختيار'),
+                                ),
                         ),
                       ),
                     ],
@@ -2815,10 +3364,13 @@ class _CashScreenState extends State<CashScreen> {
                     const SizedBox(height: 8),
                     TextField(
                       controller: payAmountCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: InputDecoration(
                         labelText: 'المبلغ المدفوع',
-                        border: OutlineInputBorder(),
+                        suffixText: brandCurrency(),
+                        border: const OutlineInputBorder(),
                         isDense: true,
                       ),
                     ),
@@ -2835,8 +3387,7 @@ class _CashScreenState extends State<CashScreen> {
                           child: Text('من العهدة التشغيلية'),
                         ),
                       ],
-                      onChanged: (v) =>
-                          setState(() => payFrom = v ?? 'self'),
+                      onChanged: (v) => setState(() => payFrom = v ?? 'self'),
                       decoration: const InputDecoration(
                         labelText: 'الدفع من',
                         border: OutlineInputBorder(),
@@ -2857,8 +3408,7 @@ class _CashScreenState extends State<CashScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
-                        onPressed:
-                            paying ? null : recordSellerPayment,
+                        onPressed: paying ? null : recordSellerPayment,
                         child: paying
                             ? const SizedBox(
                                 width: 18,
@@ -2879,10 +3429,12 @@ class _CashScreenState extends State<CashScreen> {
             // طبق الأصل getCashCollection: COD vs delivery_boy_cash_collection
             ...items.map((item) {
               final rawType = J.str(item['type']);
-              final isCollection = rawType == 'Delivery Boy Cash Collection' ||
+              final isCollection =
+                  rawType == 'Delivery Boy Cash Collection' ||
                   rawType == 'delivery_boy_cash_collection';
               final typeAr = isCollection ? 'تحصيل نقدي' : 'COD عند التسليم';
-              final orderLabel = J.str(item['order_id']).isEmpty ||
+              final orderLabel =
+                  J.str(item['order_id']).isEmpty ||
                       J.str(item['order_id']) == '-'
                   ? '—'
                   : '#${item['order_id']}';
@@ -2897,13 +3449,30 @@ class _CashScreenState extends State<CashScreen> {
                         : Icons.payments_outlined,
                     color: AppColors.orange,
                   ),
-                  title: Text('$orderLabel • $typeAr'),
-                  subtitle: Text(
-                    J.str(item['created_at'] ?? item['message'] ?? ''),
+                  title: Text(
+                    '$orderLabel • $typeAr',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  trailing: Text(
-                    amount,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  subtitle: Text(
+                    J.str(item['created_at']).isNotEmpty
+                        ? formatDateTime(item['created_at'])
+                        : J.str(item['message'] ?? ''),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: SizedBox(
+                    width: 110,
+                    child: Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          formatMoney(amount),
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -2972,12 +3541,12 @@ class _FundsScreenState extends State<FundsScreen> {
             // الملخص المالي الموحد — طبق الأصل FundTransfers.vue
             if (finance.isNotEmpty) ...[
               GridView.count(
-                crossAxisCount: 2,
+                crossAxisCount: responsiveColumns(context, tileWidth: 180),
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 mainAxisSpacing: 8,
                 crossAxisSpacing: 8,
-                childAspectRatio: 1.7,
+                mainAxisExtent: 88,
                 children: [
                   Card(
                     child: Padding(
@@ -2990,11 +3559,15 @@ class _FundsScreenState extends State<FundsScreen> {
                             'رصيد الأرباح',
                             style: TextStyle(fontSize: 11),
                           ),
-                          Text(
-                            '${finance['earnings_balance'] ?? 0}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              formatMoney(finance['earnings_balance'] ?? 0),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                         ],
@@ -3012,11 +3585,15 @@ class _FundsScreenState extends State<FundsScreen> {
                             'العهدة التشغيلية',
                             style: TextStyle(fontSize: 11),
                           ),
-                          Text(
-                            '${finance['float_balance'] ?? 0}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              formatMoney(finance['float_balance'] ?? 0),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                         ],
@@ -3034,11 +3611,15 @@ class _FundsScreenState extends State<FundsScreen> {
                             'النقد بيدي / صافي التوريد',
                             style: TextStyle(fontSize: 11),
                           ),
-                          Text(
-                            '${finance['cash_in_hand'] ?? 0} / ${finance['net_to_remit'] ?? 0}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14,
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              '${formatMoney(finance['cash_in_hand'] ?? 0)} / ${formatMoney(finance['net_to_remit'] ?? 0)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                              ),
                             ),
                           ),
                         ],
@@ -3056,11 +3637,15 @@ class _FundsScreenState extends State<FundsScreen> {
                             'دفعت من جيبك (ذمة لك)',
                             style: TextStyle(fontSize: 11),
                           ),
-                          Text(
-                            '${finance['pending_self_claim'] ?? 0}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              formatMoney(finance['pending_self_claim'] ?? 0),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                         ],
@@ -3084,16 +3669,13 @@ class _FundsScreenState extends State<FundsScreen> {
                 final typeAr = t == 'credit'
                     ? 'إيداع'
                     : t == 'debit'
-                        ? 'خصم'
-                        : J.str(item['type'] ?? 'تحويل');
-                final msg =
-                    J.str(item['message'] ?? item['remark'] ?? '');
+                    ? 'خصم'
+                    : J.str(item['type'] ?? 'تحويل');
+                final msg = J.str(item['message'] ?? item['remark'] ?? '');
                 return Card(
                   child: ListTile(
                     leading: Icon(
-                      t == 'credit'
-                          ? Icons.arrow_downward
-                          : Icons.arrow_upward,
+                      t == 'credit' ? Icons.arrow_downward : Icons.arrow_upward,
                       color: t == 'credit'
                           ? AppColors.success
                           : AppColors.orange,
@@ -3107,9 +3689,8 @@ class _FundsScreenState extends State<FundsScreen> {
                       J.str(item['created_at'] ?? item['status'] ?? ''),
                     ),
                     trailing: Text(
-                      J.str(item['amount']),
-                      style:
-                          const TextStyle(fontWeight: FontWeight.w800),
+                      formatMoney(item['amount']),
+                      style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
                   ),
                 );
@@ -3154,18 +3735,22 @@ class _WithdrawalsScreenState extends State<WithdrawalsScreen> {
     );
     if (!mounted) return;
     // المفتاح withdraw_requests (بدون al) + بدائل للتوافق
-    var list = J.maps(result.dataMap['withdraw_requests'] ??
-        result.dataMap['withdrawal_requests'] ??
-        result.dataMap['withdrawals']);
+    var list = J.maps(
+      result.dataMap['withdraw_requests'] ??
+          result.dataMap['withdrawal_requests'] ??
+          result.dataMap['withdrawals'],
+    );
     if (list.isEmpty) list = result.dataMaps;
     // fallback: القائمة الكاملة index (مثل التاجر) إن كانت get فارغة
     if (list.isEmpty && result.ok) {
       try {
         final idx = await app.api.withdrawalIndex();
         if (mounted && idx.ok) {
-          final alt = J.maps(idx.dataMap['withdraw_requests'] ??
-              idx.dataMap['withdrawal_requests'] ??
-              idx.dataMap['data']);
+          final alt = J.maps(
+            idx.dataMap['withdraw_requests'] ??
+                idx.dataMap['withdrawal_requests'] ??
+                idx.dataMap['data'],
+          );
           if (alt.isEmpty) {
             final alt2 = idx.dataMaps;
             if (alt2.isNotEmpty) list = alt2;
@@ -3179,9 +3764,7 @@ class _WithdrawalsScreenState extends State<WithdrawalsScreen> {
     setState(() {
       items = statusFilter.isEmpty
           ? list
-          : list
-              .where((m) => '${J.i(m['status'])}' == statusFilter)
-              .toList();
+          : list.where((m) => '${J.i(m['status'])}' == statusFilter).toList();
       balance = J.str(result.dataMap['balance']);
       final f = result.dataMap['finance'];
       if (f is Map) finance = J.map(f);
@@ -3207,11 +3790,17 @@ class _WithdrawalsScreenState extends State<WithdrawalsScreen> {
           children: [
             TextField(
               controller: amount,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'المبلغ'),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: InputDecoration(
+                labelText: 'المبلغ',
+                suffixText: brandCurrency(),
+              ),
             ),
             TextField(
               controller: message,
+              maxLines: 2,
               decoration: const InputDecoration(labelText: 'ملاحظة'),
             ),
           ],
@@ -3241,10 +3830,7 @@ class _WithdrawalsScreenState extends State<WithdrawalsScreen> {
     }
     final bal = double.tryParse(balance) ?? double.infinity;
     if (value > bal) {
-      toast(
-        context,
-        'المبلغ المطلوب يجب ألا يتجاوز الرصيد المتاح ($balance)',
-      );
+      toast(context, 'المبلغ المطلوب يجب ألا يتجاوز الرصيد المتاح ($balance)');
       return;
     }
     final result = await app.api.addWithdrawal(
@@ -3296,32 +3882,34 @@ class _WithdrawalsScreenState extends State<WithdrawalsScreen> {
               children: [
                 if (finance.isNotEmpty)
                   GridView.count(
-                    crossAxisCount: 2,
+                    crossAxisCount: responsiveColumns(context, tileWidth: 180),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     mainAxisSpacing: 8,
                     crossAxisSpacing: 8,
-                    childAspectRatio: 1.8,
+                    mainAxisExtent: 86,
                     children: [
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(10),
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            mainAxisAlignment:
-                                MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Text(
                                 'الرصيد المتاح للسحب',
                                 style: TextStyle(fontSize: 11),
                               ),
-                              Text(
-                                balance.isNotEmpty
-                                    ? balance
-                                    : '${app.balance}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Text(
+                                  formatMoney(
+                                    balance.isNotEmpty ? balance : app.balance,
+                                  ),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
                             ],
@@ -3332,19 +3920,21 @@ class _WithdrawalsScreenState extends State<WithdrawalsScreen> {
                         child: Padding(
                           padding: const EdgeInsets.all(10),
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            mainAxisAlignment:
-                                MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Text(
                                 'العهدة التشغيلية',
                                 style: TextStyle(fontSize: 11),
                               ),
-                              Text(
-                                '${finance['float_balance'] ?? 0}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Text(
+                                  formatMoney(finance['float_balance'] ?? 0),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
                             ],
@@ -3355,20 +3945,22 @@ class _WithdrawalsScreenState extends State<WithdrawalsScreen> {
                         child: Padding(
                           padding: const EdgeInsets.all(10),
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            mainAxisAlignment:
-                                MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Text(
                                 'النقد بيدي / صافي التوريد',
                                 style: TextStyle(fontSize: 11),
                               ),
-                              Text(
-                                '${finance['cash_in_hand'] ?? 0} / ${finance['net_to_remit'] ?? 0}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 13,
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Text(
+                                  '${formatMoney(finance['cash_in_hand'] ?? 0)} / ${formatMoney(finance['net_to_remit'] ?? 0)}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ],
@@ -3379,19 +3971,21 @@ class _WithdrawalsScreenState extends State<WithdrawalsScreen> {
                         child: Padding(
                           padding: const EdgeInsets.all(10),
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            mainAxisAlignment:
-                                MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Text(
                                 'متبقٍّ تحصيله (COD)',
                                 style: TextStyle(fontSize: 11),
                               ),
-                              Text(
-                                '${finance['cod_liability'] ?? 0}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Text(
+                                  formatMoney(finance['cod_liability'] ?? 0),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
                             ],
@@ -3408,8 +4002,8 @@ class _WithdrawalsScreenState extends State<WithdrawalsScreen> {
                           padding: const EdgeInsets.all(12),
                           child: Text(
                             balance.isNotEmpty
-                                ? 'الرصيد المتاح: $balance'
-                                : 'الرصيد: ${app.balance}',
+                                ? 'الرصيد المتاح: ${formatMoney(balance)}'
+                                : 'الرصيد: ${formatMoney(app.balance)}',
                             style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                         ),
@@ -3418,10 +4012,16 @@ class _WithdrawalsScreenState extends State<WithdrawalsScreen> {
                     const SizedBox(width: 8),
                     DropdownButton<String>(
                       value: statusFilter,
-                      hint: const Text('الحالة', style: TextStyle(fontSize: 12)),
+                      hint: const Text(
+                        'الحالة',
+                        style: TextStyle(fontSize: 12),
+                      ),
                       items: const [
                         DropdownMenuItem(value: '', child: Text('الكل')),
-                        DropdownMenuItem(value: '0', child: Text('قيد الانتظار')),
+                        DropdownMenuItem(
+                          value: '0',
+                          child: Text('قيد الانتظار'),
+                        ),
                         DropdownMenuItem(value: '1', child: Text('مقبول')),
                         DropdownMenuItem(value: '2', child: Text('مرفوض')),
                       ],
@@ -3454,6 +4054,7 @@ class _WithdrawalsScreenState extends State<WithdrawalsScreen> {
                     border: const OutlineInputBorder(),
                   ),
                   textInputAction: TextInputAction.search,
+                  onChanged: (v) => setState(() => search = v.trim()),
                   onSubmitted: (v) {
                     setState(() => search = v.trim());
                     _load();
@@ -3473,7 +4074,7 @@ class _WithdrawalsScreenState extends State<WithdrawalsScreen> {
               onEmptyAction: _add,
               skeleton: const TileSkeletonList(count: 4),
               child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 96),
                 itemCount: items.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (_, i) {
@@ -3482,8 +4083,8 @@ class _WithdrawalsScreenState extends State<WithdrawalsScreen> {
                   final stColor = st == 1
                       ? AppColors.success
                       : st == 2
-                          ? AppColors.error
-                          : AppColors.orange;
+                      ? AppColors.error
+                      : AppColors.orange;
                   return Card(
                     child: ListTile(
                       leading: Container(
@@ -3496,13 +4097,13 @@ class _WithdrawalsScreenState extends State<WithdrawalsScreen> {
                           st == 1
                               ? Icons.check_circle_outline
                               : st == 2
-                                  ? Icons.cancel_outlined
-                                  : Icons.pending_outlined,
+                              ? Icons.cancel_outlined
+                              : Icons.pending_outlined,
                           color: stColor,
                         ),
                       ),
                       title: Text(
-                        J.str(item['amount']),
+                        formatMoney(item['amount']),
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                       subtitle: Text(
@@ -3513,7 +4114,9 @@ class _WithdrawalsScreenState extends State<WithdrawalsScreen> {
                             ? J.str(item['created_at']).substring(0, 10)
                             : '',
                         style: const TextStyle(
-                            fontSize: 10, color: AppColors.greyText),
+                          fontSize: 10,
+                          color: AppColors.greyText,
+                        ),
                       ),
                     ),
                   );
@@ -3591,12 +4194,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
             title: Text('من $start إلى $end'),
             trailing: Icon(Icons.date_range),
             onTap: () async {
-              final s = await pickDate(context);
+              final s = await pickDate(
+                context,
+                initial: DateTime.tryParse(start),
+              );
               if (s == null || !context.mounted) return;
-              final e = await pickDate(context);
+              final e = await pickDate(
+                context,
+                initial: DateTime.tryParse(end),
+                firstDate: DateTime.tryParse(s),
+              );
               if (e == null || !context.mounted) return;
-              start = s;
-              end = e;
+              setState(() {
+                start = s;
+                end = e;
+              });
               _load();
             },
           ),
@@ -3606,15 +4218,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: DropdownButtonFormField<String>(
                 key: ValueKey('cat-$categoryFilter-${categories.length}'),
-                initialValue:
-                    categoryFilter.isEmpty ? null : categoryFilter,
+                initialValue: categoryFilter.isEmpty ? null : categoryFilter,
                 hint: const Text('كل التصنيفات'),
                 items: [
-                  const DropdownMenuItem(value: '', child: Text('كل التصنيفات')),
-                  ...categories.map((c) => DropdownMenuItem(
-                        value: '${c['id']}',
-                        child: Text(J.str(c['name'] ?? c['title'])),
-                      )),
+                  const DropdownMenuItem(
+                    value: '',
+                    child: Text('كل التصنيفات'),
+                  ),
+                  ...categories.map(
+                    (c) => DropdownMenuItem(
+                      value: '${c['id']}',
+                      child: Text(J.str(c['name'] ?? c['title'])),
+                    ),
+                  ),
                 ],
                 onChanged: (v) {
                   setState(() => categoryFilter = v ?? '');
@@ -3644,11 +4260,23 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     (s) => Card(
                       child: ListTile(
                         title: Text(J.str(s['product_name'] ?? s['user_name'])),
-                        subtitle:
-                            Text(J.str(s['added_date'] ?? s['created_at'])),
-                        trailing: Text(
-                          J.str(s['sub_total'] ?? s['final_total']),
-                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        subtitle: Text(
+                          J.str(s['added_date'] ?? s['created_at']),
+                        ),
+                        trailing: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 120),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: Text(
+                              formatMoney(
+                                s['sub_total'] ?? s['final_total'] ?? 0,
+                              ),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -3664,15 +4292,28 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             color: AppColors.orange.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Icon(Icons.inventory_2_outlined,
-                              color: AppColors.orange, size: 20),
+                          child: Icon(
+                            Icons.inventory_2_outlined,
+                            color: AppColors.orange,
+                            size: 20,
+                          ),
                         ),
                         title: Text(J.str(p['product_name'] ?? p['name'])),
-                        subtitle:
-                            Text('مبيعات ${p['total_sales'] ?? '-'}'),
-                        trailing: Text(
-                          J.str(p['total_price'] ?? p['sub_total']),
-                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        subtitle: Text('مبيعات ${p['total_sales'] ?? '-'}'),
+                        trailing: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 120),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: Text(
+                              formatMoney(
+                                p['total_price'] ?? p['sub_total'] ?? 0,
+                              ),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -3760,65 +4401,60 @@ class _MailSettingsScreenState extends State<MailSettingsScreen> {
         skeleton: const TileSkeletonList(count: 4, tall: true),
         child: ListView(
           children: [
-                ...statuses.map((s) {
-                  final id = J.i(s['id']);
-                  return ExpansionTile(
-                    title: Text(J.str(s['status'] ?? s['name'])),
-                    children: [
-                      SwitchListTile(
-                        title: Text('بريد'),
-                        value: mail[id] ?? true,
-                        onChanged: (v) => setState(() => mail[id] = v),
-                      ),
-                      SwitchListTile(
-                        title: Text('جوال'),
-                        value: mobile[id] ?? true,
-                        onChanged: (v) => setState(() => mobile[id] = v),
-                      ),
-                      SwitchListTile(
-                        title: Text('رسالة'),
-                        value: sms[id] ?? true,
-                        onChanged: (v) => setState(() => sms[id] = v),
-                      ),
-                    ],
-                  );
-                }),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: FilledButton(
-                    onPressed: busy
-                        ? null
-                        : () async {
-                            setState(() => busy = true);
-                            final ids = statuses
-                                .map((s) => J.i(s['id']))
-                                .toList();
-                            final result = await app.api.saveMailSettings({
-                              'status_ids': ids.join(','),
-                              'mail_statuses': ids
-                                  .map((id) => (mail[id] ?? true) ? 1 : 0)
-                                  .join(','),
-                              'mobile_statuses': ids
-                                  .map((id) => (mobile[id] ?? true) ? 1 : 0)
-                                  .join(','),
-                              'sms_statuses': ids
-                                  .map((id) => (sms[id] ?? true) ? 1 : 0)
-                                  .join(','),
-                            });
-                            if (!context.mounted) return;
-                            setState(() => busy = false);
-                            toast(
-                              context,
-                              result.ok ? 'تم الحفظ' : result.message,
-                            );
-                          },
-                    child: busy ? const BusySpinner() : Text('حفظ'),
+            ...statuses.map((s) {
+              final id = J.i(s['id']);
+              return ExpansionTile(
+                title: Text(J.str(s['status'] ?? s['name'])),
+                children: [
+                  SwitchListTile(
+                    title: Text('بريد'),
+                    value: mail[id] ?? true,
+                    onChanged: (v) => setState(() => mail[id] = v),
                   ),
-                ),
-              ],
+                  SwitchListTile(
+                    title: Text('جوال'),
+                    value: mobile[id] ?? true,
+                    onChanged: (v) => setState(() => mobile[id] = v),
+                  ),
+                  SwitchListTile(
+                    title: Text('رسالة'),
+                    value: sms[id] ?? true,
+                    onChanged: (v) => setState(() => sms[id] = v),
+                  ),
+                ],
+              );
+            }),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: FilledButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        setState(() => busy = true);
+                        final ids = statuses.map((s) => J.i(s['id'])).toList();
+                        final result = await app.api.saveMailSettings({
+                          'status_ids': ids.join(','),
+                          'mail_statuses': ids
+                              .map((id) => (mail[id] ?? true) ? 1 : 0)
+                              .join(','),
+                          'mobile_statuses': ids
+                              .map((id) => (mobile[id] ?? true) ? 1 : 0)
+                              .join(','),
+                          'sms_statuses': ids
+                              .map((id) => (sms[id] ?? true) ? 1 : 0)
+                              .join(','),
+                        });
+                        if (!context.mounted) return;
+                        setState(() => busy = false);
+                        toast(context, result.ok ? 'تم الحفظ' : result.message);
+                      },
+                child: busy ? const BusySpinner() : Text('حفظ'),
+              ),
             ),
+          ],
         ),
-      );
+      ),
+    );
   }
 }
 
@@ -3889,12 +4525,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     const Icon(Icons.star, color: Colors.amber),
                     const SizedBox(width: 8),
-                    Text('تقييمي: $avg',
-                        style:
-                            const TextStyle(fontWeight: FontWeight.w800)),
+                    Text(
+                      'تقييمي: $avg',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
                     const SizedBox(width: 8),
-                    Text('($count تقييم)',
-                        style: const TextStyle(fontSize: 12)),
+                    Text(
+                      '($count تقييم)',
+                      style: const TextStyle(fontSize: 12),
+                    ),
                   ],
                 ),
               ),
@@ -3908,8 +4547,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 bonusType == 1
                     ? 'العمولة: $bonusPct% (تحددها الإدارة)'
                     : bonusType == 2
-                        ? 'راتب + عمولة $bonusPct% (تحددها الإدارة)'
-                        : 'العمولة: مبلغ ثابت (تحدده الإدارة)',
+                    ? 'راتب + عمولة $bonusPct% (تحددها الإدارة)'
+                    : 'العمولة: مبلغ ثابت (تحدده الإدارة)',
                 style: const TextStyle(fontSize: 12),
               ),
             ),
@@ -3931,8 +4570,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onChanged: citiesLoading ? null : (v) => setState(() => cityId = v),
             decoration: InputDecoration(
               labelText: 'المدينة',
-              hintText:
-                  citiesLoading ? 'جاري تحميل المدن...' : 'اختر المدينة',
+              hintText: citiesLoading ? 'جاري تحميل المدن...' : 'اختر المدينة',
               border: OutlineInputBorder(),
               suffixIcon: citiesLoading
                   ? const Padding(
@@ -3966,8 +4604,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               final ok = await confirmAction(
                 context,
                 title: 'اختيار صورة الرخصة',
-                body:
-                    'سيتم فتح المعرض لاختيار صورة رخصة القيادة فقط.',
+                body: 'سيتم فتح المعرض لاختيار صورة رخصة القيادة فقط.',
                 confirmLabel: 'متابعة',
               );
               if (!ok || !context.mounted) return;
@@ -4086,13 +4723,13 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
   bool loading = true;
 
   static const _privacyFallback =
-      'تنطبق سياسة الخصوصية هذه على تطبيق سريع مارت موصل في اليمن. نجمع بيانات الحساب اللازمة للعمل: الاسم، رقم الجوال، البريد إن وُجد، العنوان والمدينة، الطلبات المسندة، التحصيل النقدي، التحويلات وطلبات السحب.\n\n'
+      'تنطبق سياسة الخصوصية هذه على تطبيق سريع MART - مندوب التوصيل في اليمن. نجمع بيانات الحساب اللازمة للعمل: الاسم، رقم الجوال، البريد إن وُجد، العنوان والمدينة، الطلبات المسندة، التحصيل النقدي، التحويلات وطلبات السحب.\n\n'
       'الصور: يمكنك اختيار صورة رخصة القيادة أو الهوية من المعرض لتحديث ملفك. لا نصل إلى المعرض إلا عند اختيارك ذلك.\n\n'
       'لا نبيع بياناتك لمعلنين. قد تظهر بيانات لازمة لتنفيذ التوصيل داخل المنصة. يمكنك حذف الحساب من: حسابي ثم حذف الحساب.\n\n'
       'الخدمة مخصصة لمن يبلغ 18 عاماً فأكثر لأن التوصيل عمل ميداني. آخر تحديث: 15 أغسطس 2026.';
 
   static const _termsFallback =
-      'باستخدام تطبيق سريع مارت موصل فإنك توافق على هذه الشروط. الحساب يُنشأ من الإدارة فقط.\n\n'
+      'باستخدام تطبيق سريع MART - مندوب التوصيل فإنك توافق على هذه الشروط. الحساب يُنشأ من الإدارة فقط.\n\n'
       'أنت مسؤول عن التعامل مع الطلبات المسندة، تحديث الحالة بدقة، وتسليم التحصيل النقدي حسب تعليمات الإدارة.\n\n'
       'يُمنع إساءة استخدام بيانات العملاء أو مشاركة تفاصيل الطلب خارج العمل. يحق للإدارة إيقاف الحساب عند المخالفة.\n\n'
       'يمكنك حذف حسابك من داخل التطبيق: حسابي ثم حذف الحساب. آخر تحديث: 15 أغسطس 2026.';
@@ -4186,11 +4823,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() { loading = true; error = null; });
+    setState(() {
+      loading = true;
+      error = null;
+    });
     final res = await app.api.topNotifications();
     if (!mounted) return;
     if (!res.ok) {
-      setState(() { loading = false; error = res.failMessage; });
+      setState(() {
+        loading = false;
+        error = res.failMessage;
+      });
       return;
     }
     setState(() {
@@ -4219,12 +4862,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  bool _isUnread(Map<String, dynamic> n) {
+    final readAt = n['read_at'];
+    return readAt == null || readAt == false || J.str(readAt).isEmpty;
+  }
+
   Future<void> _markOneRead(int index) async {
     final n = items[index];
-    final isUnread =
-        J.str(n['read_at']).isEmpty && (n['read_at'] == null);
-    if (!isUnread) return;
-    // تحديث متفائل فوري + تأكيد بالسيرفر
+    if (!_isUnread(n)) return;
+    // تحديث متفائل: تعليم كمقروء + إنقاص العداد
     setState(() {
       n['read_at'] = 'read';
       if (unread > 0) unread -= 1;
@@ -4232,7 +4878,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final res = await app.api.markNotificationRead(id: n['id']);
     if (!mounted) return;
     if (!res.ok) {
-      // رجوع هادئ عند الفشل
+      // إرجاع الحالة عند الفشل
       setState(() {
         n['read_at'] = null;
         unread += 1;
@@ -4240,11 +4886,34 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  Future<void> _openNotification(int index) async {
+    final n = items[index];
+    await _markOneRead(index);
+    if (!mounted) return;
+    final data = J.map(n['data']);
+    final orderId = J.str(
+      n['order_id'] ??
+          n['assignment_id'] ??
+          data['order_id'] ??
+          data['assignment_id'],
+    );
+    if (orderId.isNotEmpty && orderId != 'null') {
+      context.push('/order/$orderId');
+      return;
+    }
+    final link = J.str(n['url'] ?? n['link'] ?? data['url']);
+    if (link.isNotEmpty && link.startsWith('/')) {
+      context.push(link);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(unread > 0 ? 'الإشعارات ($unread غير مقروء)' : 'الإشعارات'),
+        title: Text(
+          unread > 0 ? 'الإشعارات ($unread غير مقروءة)' : 'الإشعارات',
+        ),
         actions: [
           if (unread > 0)
             markingAll
@@ -4281,26 +4950,38 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           separatorBuilder: (_, __) => const SizedBox(height: 8),
           itemBuilder: (_, i) {
             final n = items[i];
-            final isUnread = J.str(n['read_at']).isEmpty &&
-                (n['read_at'] == null);
+            final isUnread = _isUnread(n);
             return Card(
               child: ListTile(
                 leading: Icon(
-                  isUnread
-                      ? Icons.markunread_outlined
-                      : Icons.drafts_outlined,
-                  color: AppColors.orange,
+                  isUnread ? Icons.markunread_outlined : Icons.drafts_outlined,
+                  color: isUnread ? AppColors.orange : AppColors.greyText,
                 ),
-                title: Text(J.str(
-                    n['title'] ?? n['subject'] ?? 'إشعار')),
-                subtitle: Text(J.str(n['message'] ??
-                    n['body'] ??
-                    n['description'] ??
-                    '')),
-                trailing: Text(
-                    J.str(n['created_at'] ?? ''),
-                    style: const TextStyle(fontSize: 10)),
-                onTap: () => _markOneRead(i),
+                title: Text(
+                  J.str(n['title'] ?? n['subject'] ?? 'إشعار'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: isUnread ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+                subtitle: Text(
+                  J.str(n['message'] ?? n['body'] ?? n['description'] ?? ''),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: SizedBox(
+                  width: 72,
+                  child: Text(
+                    formatDateTime(n['created_at']),
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.greyText,
+                    ),
+                  ),
+                ),
+                onTap: () => _openNotification(i),
               ),
             );
           },
@@ -4476,7 +5157,8 @@ class _AccountScreenState extends State<AccountScreen> {
     }
     final avg = J.d(record['average_rating']);
     final ratingCount = record['rating_count'] ?? 0;
-    final isAvailable = record['is_available'] == 1 ||
+    final isAvailable =
+        record['is_available'] == 1 ||
         record['is_available'] == true ||
         record['is_available'] == '1';
     final statusOk = J.i(record['status']) == 1;
@@ -4504,8 +5186,9 @@ class _AccountScreenState extends State<AccountScreen> {
                     children: [
                       CircleAvatar(
                         radius: 28,
-                        backgroundColor:
-                            AppColors.orange.withValues(alpha: 0.15),
+                        backgroundColor: AppColors.orange.withValues(
+                          alpha: 0.15,
+                        ),
                         child: Icon(
                           Icons.person,
                           color: AppColors.orange,
@@ -4539,8 +5222,9 @@ class _AccountScreenState extends State<AccountScreen> {
                                 Chip(
                                   label: Text(_statusText(record['status'])),
                                   backgroundColor: statusOk
-                                      ? AppColors.success
-                                          .withValues(alpha: 0.15)
+                                      ? AppColors.success.withValues(
+                                          alpha: 0.15,
+                                        )
                                       : Colors.red.withValues(alpha: 0.12),
                                   labelStyle: TextStyle(
                                     fontSize: 11,
@@ -4553,8 +5237,9 @@ class _AccountScreenState extends State<AccountScreen> {
                                 if (isAvailable)
                                   Chip(
                                     label: const Text('متاح'),
-                                    backgroundColor: Colors.blue
-                                        .withValues(alpha: 0.12),
+                                    backgroundColor: Colors.blue.withValues(
+                                      alpha: 0.12,
+                                    ),
                                     labelStyle: const TextStyle(
                                       fontSize: 11,
                                       color: Colors.blue,
@@ -4585,7 +5270,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     children: [
                       _AccountStat(
                         label: 'الرصيد',
-                        value: '${record['balance'] ?? app.balance}',
+                        value: formatMoney(record['balance'] ?? app.balance),
                       ),
                       _AccountStat(label: 'المدينة', value: _cityName),
                       _AccountStat(
@@ -4647,8 +5332,8 @@ class _AccountScreenState extends State<AccountScreen> {
                         label: const Text('هوية'),
                         backgroundColor:
                             record['national_identity_card'] != null
-                                ? AppColors.success.withValues(alpha: 0.15)
-                                : AppColors.greyBorder,
+                            ? AppColors.success.withValues(alpha: 0.15)
+                            : AppColors.greyBorder,
                         visualDensity: VisualDensity.compact,
                         labelStyle: const TextStyle(fontSize: 10),
                       ),
@@ -4661,35 +5346,48 @@ class _AccountScreenState extends State<AccountScreen> {
                       '${J.str(record['bank_name'], '-')} / ${J.str(record['bank_account_number'], '-')} / ${J.str(record['account_name'], '-')}',
                     ),
                   const SizedBox(height: 10),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      OutlinedButton(
+                      OutlinedButton.icon(
                         onPressed: () => context.go('/wallet'),
-                        child: const Text('محفظتي'),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                        onPressed: () => context.push('/settings'),
-                        child: const Text('الاعدادات'),
-                      ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () async {
-                          final ok = await confirmAction(
-                            context,
-                            title: 'تسجيل الخروج',
-                            body: 'هل تريد تسجيل الخروج؟',
-                          );
-                          if (!ok || !context.mounted) return;
-                          await app.logout();
-                          if (context.mounted) context.go('/login');
-                        },
-                        child: const Text(
-                          'خروج',
-                          style: TextStyle(color: Colors.red),
+                        icon: const Icon(
+                          Icons.account_balance_wallet_outlined,
+                          size: 18,
                         ),
+                        label: const Text('محفظتي'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => context.push('/settings'),
+                        icon: const Icon(Icons.settings_outlined, size: 18),
+                        label: const Text('الإعدادات'),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: BorderSide(
+                          color: Colors.red.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      onPressed: () async {
+                        final ok = await confirmAction(
+                          context,
+                          title: 'تسجيل الخروج',
+                          body: 'هل تريد تسجيل الخروج؟',
+                        );
+                        if (!ok || !context.mounted) return;
+                        await app.logout();
+                        if (context.mounted) context.go('/login');
+                      },
+                      icon: const Icon(Icons.logout, size: 18),
+                      label: const Text('تسجيل الخروج'),
+                    ),
                   ),
                 ],
               ),
@@ -4710,7 +5408,43 @@ class _AccountScreenState extends State<AccountScreen> {
                   const SizedBox(height: 12),
                   labeledField(name, 'الاسم *'),
                   labeledField(mobile, 'الجوال *', type: TextInputType.phone),
-                  labeledField(dob, 'تاريخ الميلاد (اختياري)'),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: TextField(
+                      controller: dob,
+                      readOnly: true,
+                      onTap: () async {
+                        final picked = await pickDate(
+                          context,
+                          initial: DateTime.tryParse(dob.text),
+                          firstDate: DateTime(1940),
+                          lastDate: DateTime.now(),
+                        );
+                        if (picked != null && mounted) {
+                          setState(() => dob.text = picked);
+                        }
+                      },
+                      decoration: InputDecoration(
+                        labelText: 'تاريخ الميلاد (اختياري)',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          tooltip: 'اختيار التاريخ',
+                          onPressed: () async {
+                            final picked = await pickDate(
+                              context,
+                              initial: DateTime.tryParse(dob.text),
+                              firstDate: DateTime(1940),
+                              lastDate: DateTime.now(),
+                            );
+                            if (picked != null && mounted) {
+                              setState(() => dob.text = picked);
+                            }
+                          },
+                          icon: const Icon(Icons.calendar_today_outlined),
+                        ),
+                      ),
+                    ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: TextField(
@@ -4828,7 +5562,7 @@ class _AccountScreenState extends State<AccountScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Text(
-                                'سيتم حذف حساب الموصل نهائياً. أدخل كلمة المرور للتأكيد.',
+                                'سيتم حذف حساب المندوب نهائياً. أدخل كلمة المرور للتأكيد.',
                               ),
                               const SizedBox(height: 12),
                               TextField(
@@ -4859,8 +5593,8 @@ class _AccountScreenState extends State<AccountScreen> {
                                       setDlg(() => dlgBusy = true);
                                       final result = await app.api
                                           .deleteAccount(
-                                        password: passwordCtrl.text,
-                                      );
+                                            password: passwordCtrl.text,
+                                          );
                                       if (!ctx.mounted) return;
                                       setDlg(() => dlgBusy = false);
                                       if (!result.ok) {
@@ -4910,10 +5644,7 @@ class _AccountScreenState extends State<AccountScreen> {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -4934,12 +5665,18 @@ class _AccountStat extends StatelessWidget {
         children: [
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 11, color: AppColors.greyText),
           ),
           const SizedBox(height: 2),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+            ),
           ),
         ],
       ),
@@ -4990,13 +5727,19 @@ class _ClaimOrdersScreenState extends State<ClaimOrdersScreen> {
   }
 
   Future<void> _load() async {
-    setState(() { loading = true; error = null; });
+    setState(() {
+      loading = true;
+      error = null;
+    });
     await app.refreshWorkload();
     try {
       final res = await app.api.availableOrders();
       if (!mounted) return;
       if (!res.ok) {
-        setState(() { loading = false; error = res.message; });
+        setState(() {
+          loading = false;
+          error = res.message;
+        });
         return;
       }
       final d = res.dataMap;
@@ -5009,7 +5752,10 @@ class _ClaimOrdersScreenState extends State<ClaimOrdersScreen> {
       if (meta['can_claim_enabled'] == false ||
           meta['can_claim_enabled'] == 0 ||
           meta['can_claim_enabled'] == '0') {
-        setState(() { items = []; loading = false; });
+        setState(() {
+          items = [];
+          loading = false;
+        });
         return;
       }
       final orders = J.maps(d['orders']);
@@ -5019,7 +5765,10 @@ class _ClaimOrdersScreenState extends State<ClaimOrdersScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() { loading = false; error = '$e'; });
+      setState(() {
+        loading = false;
+        error = '$e';
+      });
     }
   }
 
@@ -5029,7 +5778,12 @@ class _ClaimOrdersScreenState extends State<ClaimOrdersScreen> {
     final res = await app.api.claimAvailableOrder(id);
     if (!mounted) return;
     setState(() => claimingId = null);
-    toast(context, res.ok ? 'تم الالتقاط بنجاح' : res.message);
+    toast(
+      context,
+      res.ok
+          ? 'تم الالتقاط بنجاح'
+          : (res.message.isEmpty ? 'تعذر التقاط الطلب' : res.message),
+    );
     if (res.ok) {
       await app.refreshWorkload();
       _load();
@@ -5044,8 +5798,8 @@ class _ClaimOrdersScreenState extends State<ClaimOrdersScreen> {
         final enabled = meta.isEmpty
             ? app.canClaimOrders
             : (meta['can_claim_enabled'] == true ||
-                meta['can_claim_enabled'] == 1 ||
-                meta['can_claim_enabled'] == '1');
+                  meta['can_claim_enabled'] == 1 ||
+                  meta['can_claim_enabled'] == '1');
         if (!enabled && !loading) {
           return Scaffold(
             appBar: AppBar(title: const Text('طلبات متاحة للالتقاط')),
@@ -5060,7 +5814,8 @@ class _ClaimOrdersScreenState extends State<ClaimOrdersScreen> {
             ),
           );
         }
-        final canNow = meta['can_claim'] == true ||
+        final canNow =
+            meta['can_claim'] == true ||
             meta['can_claim'] == 1 ||
             meta['can_claim'] == '1';
         return Scaffold(
@@ -5114,26 +5869,25 @@ class _ClaimOrdersScreenState extends State<ClaimOrdersScreen> {
                             Expanded(
                               child: Text(
                                 'مجموعة #${g['public_id'] ?? g['id']}',
-                                style: const TextStyle(fontWeight: FontWeight.w800),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ),
-                            if (score != null)
-                              Chip(label: Text('نقاط $score')),
+                            if (score != null) Chip(label: Text('نقاط $score')),
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text(J.str(
-                          g['user_name'] ??
-                              g['address'] ??
-                              '',
-                        )),
+                        Text(J.str(g['user_name'] ?? g['address'] ?? '')),
                         Text(
-                          '${J.str(g['payment_method'] ?? '')} — الإجمالي ${g['final_total'] ?? ''}',
+                          '${J.str(g['payment_method'] ?? '')} — الإجمالي ${formatMoney(g['final_total'] ?? 0)}',
                           style: const TextStyle(fontSize: 12),
                         ),
                         if (J.str(g['mobile']).isNotEmpty)
-                          Text('الجوال: ${g['mobile']}',
-                              style: const TextStyle(fontSize: 12)),
+                          Text(
+                            'الجوال: ${g['mobile']}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
                         const SizedBox(height: 8),
                         Align(
                           alignment: AlignmentDirectional.centerEnd,
@@ -5183,6 +5937,7 @@ class _VueOrdersScreenState extends State<VueOrdersScreen> {
   List<Map<String, dynamic>> orders = [];
   Map<String, dynamic> counts = {};
   bool isLoading = false;
+  String? error;
   dynamic claiming;
   String sort = 'oldest';
 
@@ -5193,49 +5948,70 @@ class _VueOrdersScreenState extends State<VueOrdersScreen> {
   }
 
   Future<void> getOrders() async {
-    setState(() => isLoading = true);
+    setState(() {
+      isLoading = true;
+      error = null;
+    });
     if (tab == 'available') {
       final res = await app.api.availableOrders(sort: sort);
       if (!mounted) return;
-      setState(() => isLoading = false);
-      if (!res.ok) {
-        toast(context, res.message);
-        return;
-      }
+      setState(() {
+        isLoading = false;
+        if (!res.ok) {
+          orders = [];
+          error = res.message.isEmpty
+              ? 'تعذر تحميل الطلبات المتاحة'
+              : res.message;
+        }
+      });
+      if (!res.ok) return;
       final d = res.dataMap;
       final list = J.maps(d['orders']);
       setState(() {
         orders = list
-            .map((g) => {
-                  'key': 'g${g['id']}',
-                  'group_id': g['id'],
-                  'customer': J.str(g['user_name'], 'عميل'),
-                  'area': J.str(g['address']),
-                  'seller_count': '-',
-                  'payment_method': J.str(g['payment_method']),
-                  'amount_to_collect': J.d(g['final_total']),
-                })
+            .map(
+              (g) => {
+                'key': 'g${g['id']}',
+                'group_id': g['id'],
+                'customer': J.str(g['user_name'], 'عميل'),
+                'area': J.str(g['address']),
+                'seller_count': J.str(
+                  g['sellers_count'] ?? g['sellers']?.length,
+                ),
+                'payment_method': J.str(g['payment_method']),
+                'amount_to_collect': J.d(g['final_total']),
+              },
+            )
             .toList();
+        final c = J.map(d['counts'] ?? d['tab_counts']);
+        if (c.isNotEmpty) counts = c;
       });
       return;
     }
     final res = await app.api.collectionOrders(tab: tab, sort: sort);
     if (!mounted) return;
-    setState(() => isLoading = false);
     if (!res.ok) {
-      setState(() => orders = []);
+      setState(() {
+        isLoading = false;
+        orders = [];
+        error = res.message.isEmpty ? 'تعذر تحميل الطلبات' : res.message;
+      });
       return;
     }
     final d = res.dataMap;
     final list = J.maps(d['orders']);
     setState(() {
+      isLoading = false;
       orders = list
-          .map((o) => {
-                ...o,
-                'key':
-                    '${o['is_return_pickup'] == true ? 'r' : 'a'}${o['id']}',
-              })
+          .map(
+            (o) => {
+              ...o,
+              'key': '${o['is_return_pickup'] == true ? 'r' : 'a'}${o['id']}',
+            },
+          )
           .toList();
+      final c = J.map(d['counts'] ?? d['tab_counts']);
+      if (c.isNotEmpty) counts = c;
     });
   }
 
@@ -5267,23 +6043,66 @@ class _VueOrdersScreenState extends State<VueOrdersScreen> {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: tabs.map((t) {
-              final active = tab == t['key'];
-              final count = counts[t['key']];
-              return ChoiceChip(
-                label: Text(
-                  count != null ? '${t['label']} ($count)' : '${t['label']}',
-                ),
-                selected: active,
-                onSelected: (_) {
-                  setState(() => tab = '${t['key']}');
-                  getOrders();
-                },
-              );
-            }).toList(),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppColors.greyBg,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: tabs.map((t) {
+                  final active = tab == t['key'];
+                  final count = counts[t['key']];
+                  final label = count != null
+                      ? '${t['label']} ($count)'
+                      : '${t['label']}';
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() => tab = '${t['key']}');
+                        getOrders();
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: active ? AppColors.orange : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: active
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.orange.withValues(
+                                      alpha: 0.35,
+                                    ),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            color: active ? AppColors.white : AppColors.navy,
+                            fontWeight: active
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -5296,22 +6115,40 @@ class _VueOrdersScreenState extends State<VueOrdersScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              ChoiceChip(
-                label: const Text('الأقدم'),
-                selected: sort == 'oldest',
-                onSelected: (_) {
-                  setState(() => sort = 'oldest');
+              PopupMenuButton<String>(
+                tooltip: 'ترتيب الطلبات',
+                initialValue: sort,
+                onSelected: (v) {
+                  if (v == sort) return;
+                  setState(() => sort = v);
                   getOrders();
                 },
-              ),
-              const SizedBox(width: 4),
-              ChoiceChip(
-                label: const Text('الأحدث'),
-                selected: sort == 'newest',
-                onSelected: (_) {
-                  setState(() => sort = 'newest');
-                  getOrders();
-                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'oldest', child: Text('الأقدم أولاً')),
+                  PopupMenuItem(value: 'newest', child: Text('الأحدث أولاً')),
+                ],
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.greyBorder),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.sort, size: 18),
+                      const SizedBox(width: 4),
+                      Text(
+                        sort == 'newest' ? 'الأحدث' : 'الأقدم',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      const Icon(Icons.arrow_drop_down, size: 18),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -5321,6 +6158,30 @@ class _VueOrdersScreenState extends State<VueOrdersScreen> {
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: CircularProgressIndicator(),
+              ),
+            )
+          else if (error != null)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                  const SizedBox(height: 6),
+                  OutlinedButton.icon(
+                    onPressed: getOrders,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('إعادة المحاولة'),
+                  ),
+                ],
               ),
             )
           else if (orders.isEmpty)
@@ -5402,7 +6263,9 @@ class _VueOrdersScreenState extends State<VueOrdersScreen> {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.teal.withValues(alpha: 0.15),
+                                      color: Colors.teal.withValues(
+                                        alpha: 0.15,
+                                      ),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
@@ -5424,9 +6287,11 @@ class _VueOrdersScreenState extends State<VueOrdersScreen> {
                                       color: AppColors.greyText,
                                     ),
                                   ),
-                                if (!isReturn && !isAkh)
+                                if (!isReturn &&
+                                    !isAkh &&
+                                    J.str(o['seller_count']).isNotEmpty)
                                   Text(
-                                    'المتاجر: ${o['seller_count'] ?? '-'}',
+                                    'المتاجر: ${o['seller_count']}',
                                     style: const TextStyle(
                                       fontSize: 12,
                                       color: AppColors.greyText,
@@ -5474,12 +6339,15 @@ class _VueOrdersScreenState extends State<VueOrdersScreen> {
                               ),
                               const SizedBox(height: 4),
                               if (due > 0)
-                                Text(
-                                  due.toStringAsFixed(2),
-                                  style: const TextStyle(
-                                    color: Colors.red,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 16,
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    formatMoney(due),
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16,
+                                    ),
                                   ),
                                 )
                               else
@@ -5501,10 +6369,12 @@ class _VueOrdersScreenState extends State<VueOrdersScreen> {
                             ? FilledButton(
                                 onPressed: () {
                                   if (isAkh &&
-                                      J.str(o['akhdimni_order_id'])
+                                      J
+                                          .str(o['akhdimni_order_id'])
                                           .isNotEmpty) {
                                     context.push(
-                                        '/akhdimni/${o['akhdimni_order_id']}');
+                                      '/akhdimni/${o['akhdimni_order_id']}',
+                                    );
                                   } else {
                                     context.push('/order/${o['id']}');
                                   }
@@ -5555,6 +6425,8 @@ class WalletScreen extends StatefulWidget {
 
 class _WalletScreenState extends State<WalletScreen> {
   bool busy = false;
+  bool loading = true;
+  String? loadError;
   Map<String, dynamic> sum = {
     'cash_you_need_to_return': 0,
     'amount_owed_to_you': 0,
@@ -5585,9 +6457,20 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Future<void> load() async {
+    if (!loading) setState(() => loading = true);
     final res = await app.api.collectionSettlement();
-    if (!mounted || !res.ok) return;
-    setState(() => sum = {...sum, ...res.dataMap});
+    if (!mounted) return;
+    setState(() {
+      loading = false;
+      if (res.ok) {
+        sum = {...sum, ...res.dataMap};
+        loadError = null;
+      } else {
+        loadError = res.message.isEmpty
+            ? 'تعذر تحميل بيانات المحفظة'
+            : res.message;
+      }
+    });
   }
 
   Future<void> loadDetails() async {
@@ -5597,6 +6480,12 @@ class _WalletScreenState extends State<WalletScreen> {
     setState(() {
       loadingDetails = false;
       details = J.maps(res.dataMap['entries']);
+      if (!res.ok) {
+        toast(
+          context,
+          res.message.isEmpty ? 'تعذر تحميل كشف الحساب' : res.message,
+        );
+      }
     });
   }
 
@@ -5624,22 +6513,22 @@ class _WalletScreenState extends State<WalletScreen> {
         final b1 = i < bytes.length ? bytes[i++] : -1;
         final b2 = i < bytes.length ? bytes[i++] : -1;
         final n = (b0 << 16) | ((b1 >= 0 ? b1 : 0) << 8) | (b2 >= 0 ? b2 : 0);
-        out += chars[(n >> 18) & 63] +
+        out +=
+            chars[(n >> 18) & 63] +
             chars[(n >> 12) & 63] +
             (b1 >= 0 ? chars[(n >> 6) & 63] : '=') +
             (b2 >= 0 ? chars[n & 63] : '=');
       }
-      setState(
-        () => handoverReceipt = 'data:image/$ext;base64,$out',
-      );
+      setState(() => handoverReceipt = 'data:image/$ext;base64,$out');
     } catch (_) {
       toast(context, 'تعذر قراءة الصورة');
     }
   }
 
   Future<void> declareHandover() async {
+    if (busy) return;
     final amount = double.tryParse(amountCtrl.text.trim());
-    if (amount == null || amount <= 0) {
+    if (amount == null || !amount.isFinite || amount <= 0) {
       toast(context, 'أدخل المبلغ الذي سلّمته');
       return;
     }
@@ -5648,11 +6537,52 @@ class _WalletScreenState extends State<WalletScreen> {
       return;
     }
     setState(() => busy = true);
+    final server = app.apiUrl;
+    final courierId = '${app.boyId}';
+    final session = app.token;
+    final method = handoverMethod;
+    final receipt = method == 'transfer' ? handoverReceipt : null;
+    final HandoverIntentStore intents;
+    final String intentKey;
+    try {
+      intents = HandoverIntentStore(await SharedPreferences.getInstance());
+      intentKey = await intents.prepare(
+        server: server,
+        courierId: courierId,
+        amount: amount,
+        method: method,
+        receipt: receipt,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => busy = false);
+      toast(context, 'تعذر حفظ طلب التوريد بأمان. حاول مرة أخرى.');
+      return;
+    }
+    if (!mounted) return;
+    if (app.token != session ||
+        app.apiUrl != server ||
+        '${app.boyId}' != courierId) {
+      setState(() => busy = false);
+      return;
+    }
     final res = await app.api.collectionHandover(
       amount: amount,
-      collectionMethod: handoverMethod,
-      receiptImage: handoverMethod == 'transfer' ? handoverReceipt : null,
+      collectionMethod: method,
+      receiptImage: receipt,
+      idempotencyKey: intentKey,
     );
+    if (res.ok) {
+      try {
+        await intents.acknowledge(
+          server: server,
+          courierId: courierId,
+          key: intentKey,
+        );
+      } catch (_) {
+        // Keeping an acknowledged key is safer than duplicating a declaration.
+      }
+    }
     if (!mounted) return;
     setState(() => busy = false);
     if (res.ok) {
@@ -5665,7 +6595,7 @@ class _WalletScreenState extends State<WalletScreen> {
       });
       load();
     } else {
-      toast(context, res.message);
+      setState(() => handoverMsg = res.message);
     }
   }
 
@@ -5694,10 +6624,7 @@ class _WalletScreenState extends State<WalletScreen> {
     final cards = [
       {'label': 'مطلوب توريده', 'k': 'cash_you_need_to_return'},
       {'label': 'مستحق لك', 'k': 'amount_owed_to_you'},
-      {
-        'label': 'صافي التحصيل (قبل خصم المصاريف)',
-        'k': 'cash_currently_held',
-      },
+      {'label': 'صافي التحصيل (قبل خصم المصاريف)', 'k': 'cash_currently_held'},
       {'label': 'حصّلته من العملاء', 'k': 'cod_collected'},
       {'label': 'ورّدته سابقاً', 'k': 'cash_already_handed_over'},
       {'label': 'عهدة مستلمة من الإدارة', 'k': 'float_received'},
@@ -5714,49 +6641,104 @@ class _WalletScreenState extends State<WalletScreen> {
             'محفظتي',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),
+          if (loadError != null)
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.error.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.cloud_off_outlined,
+                    size: 18,
+                    color: AppColors.error,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      loadError!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.error,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: loading ? null : load,
+                    child: const Text('إعادة المحاولة'),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 12),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 1.35,
-            children: cards
-                .map(
-                  (c) => Card(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = responsiveColumns(
+                context,
+                min: 2,
+                max: 4,
+                tileWidth: 165,
+              );
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: cards.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  mainAxisExtent: 98,
+                ),
+                itemBuilder: (context, index) {
+                  final c = cards[index];
+                  final accent = c['k'] == 'cash_you_need_to_return'
+                      ? Colors.red
+                      : c['k'] == 'amount_owed_to_you'
+                      ? AppColors.success
+                      : AppColors.navy;
+                  return Card(
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             '${c['label']}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 12,
+                              height: 1.25,
                               color: AppColors.greyText,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${sum[c['k']] ?? 0}',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: c['k'] == 'cash_you_need_to_return'
-                                  ? Colors.red
-                                  : c['k'] == 'amount_owed_to_you'
-                                      ? AppColors.success
-                                      : AppColors.navy,
+                          const Spacer(),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              formatMoney(sum[c['k']] ?? 0),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: accent,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                )
-                .toList(),
+                  );
+                },
+              );
+            },
           ),
           const SizedBox(height: 12),
           Card(
@@ -5770,36 +6752,53 @@ class _WalletScreenState extends State<WalletScreen> {
                     style: TextStyle(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: amountCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'المبلغ الذي سلّمته',
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
+                  TextField(
+                    controller: amountCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      labelText: 'المبلغ الذي سلّمته',
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                      suffixText: brandCurrency(),
+                    ),
+                  ),
+                  if (J.d(sum['cash_you_need_to_return']) > 0)
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          amountCtrl.text = formatAmount(
+                            sum['cash_you_need_to_return'],
+                          ).replaceAll(',', '');
+                          setState(() {});
+                        },
+                        icon: const Icon(Icons.auto_fix_high, size: 16),
+                        label: Text(
+                          'توريد المطلوب كاملاً (${formatMoney(sum['cash_you_need_to_return'])})',
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      DropdownButton<String>(
-                        value: handoverMethod,
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'cash',
-                            child: Text('نقداً'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'transfer',
-                            child: Text('تحويل بنكي'),
-                          ),
-                        ],
-                        onChanged: (v) =>
-                            setState(() => handoverMethod = v ?? 'cash'),
+                    ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    initialValue: handoverMethod,
+                    isExpanded: true,
+                    items: const [
+                      DropdownMenuItem(value: 'cash', child: Text('نقداً')),
+                      DropdownMenuItem(
+                        value: 'transfer',
+                        child: Text('تحويل بنكي'),
                       ),
                     ],
+                    onChanged: (v) =>
+                        setState(() => handoverMethod = v ?? 'cash'),
+                    decoration: const InputDecoration(
+                      labelText: 'طريقة التوريد',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
                   ),
                   if (handoverMethod == 'transfer') ...[
                     const SizedBox(height: 8),
@@ -5808,21 +6807,39 @@ class _WalletScreenState extends State<WalletScreen> {
                       style: TextStyle(fontSize: 12),
                     ),
                     const SizedBox(height: 4),
-                    OutlinedButton.icon(
-                      onPressed: pickReceipt,
-                      icon: const Icon(Icons.upload),
-                      label: Text(
-                        handoverReceipt.isEmpty
-                            ? 'اختيار الصورة'
-                            : 'تم اختيار الإشعار',
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: pickReceipt,
+                            icon: Icon(
+                              handoverReceipt.isEmpty
+                                  ? Icons.upload
+                                  : Icons.check_circle_outline,
+                            ),
+                            label: Text(
+                              handoverReceipt.isEmpty
+                                  ? 'اختيار الصورة'
+                                  : 'تم اختيار الإشعار',
+                            ),
+                          ),
+                        ),
+                        if (handoverReceipt.isNotEmpty)
+                          IconButton(
+                            tooltip: 'إزالة الصورة',
+                            onPressed: () =>
+                                setState(() => handoverReceipt = ''),
+                            icon: const Icon(Icons.close),
+                          ),
+                      ],
                     ),
                   ],
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: busy ||
+                      onPressed:
+                          busy ||
                               amountCtrl.text.trim().isEmpty ||
                               (handoverMethod == 'transfer' &&
                                   handoverReceipt.isEmpty)
@@ -5843,8 +6860,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   const SizedBox(height: 4),
                   const Text(
                     'أنت تُعلن، وموظف الإدارة يؤكد الاستلام بعد مراجعة الإشعار. أي فرق يظهر كملاحظة للمراجعة.',
-                    style:
-                        TextStyle(fontSize: 11, color: AppColors.greyText),
+                    style: TextStyle(fontSize: 11, color: AppColors.greyText),
                   ),
                   if (handoverMsg.isNotEmpty)
                     Container(
@@ -5883,8 +6899,17 @@ class _WalletScreenState extends State<WalletScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                     child: loadingDetails
-                        ? const Center(
-                            child: CircularProgressIndicator(),
+                        ? const Center(child: CircularProgressIndicator())
+                        : details.isEmpty
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Text(
+                              'لا توجد حركات في كشف الحساب',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.greyText,
+                              ),
+                            ),
                           )
                         : Column(
                             children: details
@@ -5892,7 +6917,7 @@ class _WalletScreenState extends State<WalletScreen> {
                                   (r) => ListTile(
                                     dense: true,
                                     title: Text(
-                                      '${typeLabel(r['type'])} • ${r['amount']}',
+                                      '${typeLabel(r['type'])} • ${formatMoney(r['amount'])}',
                                     ),
                                     subtitle: Text(
                                       '${fmtDate(r['date'])} • طلب ${r['order'] ?? '-'}',
@@ -5943,9 +6968,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    username.text = J.str(
-      app.user?['username'] ?? app.user?['email'] ?? '',
-    );
+    username.text = J.str(app.user?['username'] ?? app.user?['email'] ?? '');
     getProfile();
   }
 
@@ -5994,9 +7017,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final z = profile['zones'];
     if (z is List) {
       return z
-          .map((e) => e is Map
-              ? J.str(e['name'].toString().isEmpty ? e['code'] : e['name'])
-              : '$e')
+          .map(
+            (e) => e is Map
+                ? J.str(e['name'].toString().isEmpty ? e['code'] : e['name'])
+                : '$e',
+          )
           .where((e) => e.isNotEmpty)
           .toList();
     }
@@ -6009,6 +7034,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         password.text.isEmpty ||
         confirmPassword.text.isEmpty) {
       toast(context, 'أكمل جميع الحقول');
+      return;
+    }
+    if (password.text.length < 6) {
+      toast(context, 'كلمة المرور الجديدة 6 أحرف على الأقل');
+      return;
+    }
+    if (password.text != confirmPassword.text) {
+      toast(context, 'تأكيد كلمة المرور غير مطابق');
+      return;
+    }
+    if (password.text == currentPassword.text) {
+      toast(context, 'اختر كلمة مرور مختلفة عن الحالية');
       return;
     }
     setState(() => isLoading = true);
@@ -6044,10 +7081,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   const Text(
                     'ملفي',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
                   if (profileLoading)
@@ -6065,8 +7099,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     J.str(profile['name'], '-'),
@@ -6086,9 +7119,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     children: [
                                       Chip(label: Text(statusText)),
                                       if (avg > 0)
-                                        Chip(
-                                          label: Text('★ $avg ($rc)'),
-                                        )
+                                        Chip(label: Text('★ $avg ($rc)'))
                                       else
                                         const Chip(
                                           label: Text('لا يوجد تقييم بعد'),
@@ -6104,8 +7135,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ListTile(
                           dense: true,
                           title: const Text('الرصيد'),
-                          trailing:
-                              Text('${profile['balance'] ?? 0}'),
+                          trailing: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              formatMoney(profile['balance'] ?? app.balance),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
                         ),
                         ListTile(
                           dense: true,
@@ -6125,11 +7163,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 .toList(),
                           ),
                         Align(
-                          alignment:
-                              AlignmentDirectional.centerStart,
+                          alignment: AlignmentDirectional.centerStart,
                           child: TextButton(
-                            onPressed: () =>
-                                context.push('/account'),
+                            onPressed: () => context.push('/account'),
                             child: const Text('ملفي'),
                           ),
                         ),
@@ -6148,10 +7184,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   const Text(
                     'تغيير اسم المستخدم وكلمة المرور',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
                   TextField(
@@ -6166,6 +7199,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   TextField(
                     controller: currentPassword,
                     obscureText: hideCurrent,
+                    autofillHints: const [AutofillHints.password],
                     decoration: InputDecoration(
                       labelText: 'كلمة المرور الحالية',
                       border: const OutlineInputBorder(),
@@ -6176,9 +7210,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined,
                         ),
-                        onPressed: () => setState(
-                          () => hideCurrent = !hideCurrent,
-                        ),
+                        onPressed: () =>
+                            setState(() => hideCurrent = !hideCurrent),
                       ),
                     ),
                   ),
@@ -6186,8 +7219,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   TextField(
                     controller: password,
                     obscureText: hideNew,
+                    autofillHints: const [AutofillHints.newPassword],
                     decoration: InputDecoration(
-                      labelText: 'كلمة المرور',
+                      labelText: 'كلمة المرور الجديدة',
                       border: const OutlineInputBorder(),
                       isDense: true,
                       suffixIcon: IconButton(
@@ -6196,8 +7230,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined,
                         ),
-                        onPressed: () =>
-                            setState(() => hideNew = !hideNew),
+                        onPressed: () => setState(() => hideNew = !hideNew),
                       ),
                     ),
                   ),
@@ -6205,6 +7238,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   TextField(
                     controller: confirmPassword,
                     obscureText: hideConfirm,
+                    autofillHints: const [AutofillHints.newPassword],
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => savePassword(),
                     decoration: InputDecoration(
                       labelText: 'تأكيد كلمة المرور',
                       border: const OutlineInputBorder(),
@@ -6215,9 +7251,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined,
                         ),
-                        onPressed: () => setState(
-                          () => hideConfirm = !hideConfirm,
-                        ),
+                        onPressed: () =>
+                            setState(() => hideConfirm = !hideConfirm),
                       ),
                     ),
                   ),
@@ -6226,14 +7261,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Expanded(
                         child: FilledButton(
-                          onPressed:
-                              isLoading ? null : savePassword,
+                          onPressed: isLoading ? null : savePassword,
                           child: isLoading
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child:
-                                      CircularProgressIndicator(
+                                  child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     color: Colors.white,
                                   ),
@@ -6281,6 +7314,7 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
   double codTotal = 0;
   double codCollected = 0;
   double tolerance = 100;
+  bool cashEdited = false;
   double? cashReceived;
   String collectionMethod = 'cash';
   String proofPath = '';
@@ -6310,6 +7344,7 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
   bool bulkShow = false;
   bool bulkBusy = false;
   Map<dynamic, double?> bulkAmounts = {};
+  final Map<dynamic, TextEditingController> bulkCtrls = {};
   bool deliverShow = false;
   bool deliverBusy = false;
 
@@ -6330,6 +7365,9 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
     proofCtrl2.dispose();
     dialogAmountCtrl.dispose();
     dialogNoteCtrl.dispose();
+    for (final ctrl in bulkCtrls.values) {
+      ctrl.dispose();
+    }
     super.dispose();
   }
 
@@ -6371,8 +7409,12 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
     return m[status] ?? 0;
   }
 
-  List<String> get steps =>
-      ['استلام الطلب', 'جمع الأصناف', 'في الطريق', 'تسليم + تحصيل'];
+  List<String> get steps => [
+    'استلام الطلب',
+    'جمع الأصناف',
+    'في الطريق',
+    'تسليم + تحصيل',
+  ];
   bool get canAccept =>
       status == 'assigned' || assignment['requires_accept'] == true;
   bool get canPickup => ['accepted', 'picking_up'].contains(status);
@@ -6381,12 +7423,26 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
   bool get isPickupPhase => canAccept || canPickup;
   double get collected =>
       codCollected > 0 ? codCollected : J.d(assignment['cod_collected']);
-  double get remaining =>
-      (due - collected) > 0 ? (due - collected) : 0;
+
+  /// حوالات أعلنها الموصل وتنتظر تحقق المالية.
+  double get transferPending =>
+      J.d(detail['cod_transfer_pending'] ?? assignment['cod_transfer_pending']);
+
+  /// حوالات أكدتها المالية (أصبحت مدفوعة).
+  double get transferVerified => J.d(
+    detail['cod_transfer_verified'] ?? assignment['cod_transfer_verified'],
+  );
+
+  /// amount_to_collect من الباك اند هو المتبقي بعد النقد + الحوالات،
+  /// لذلك لا نطرح المحصّل مرة ثانية.
+  double get remaining => due > 0 ? due : 0;
   bool get showCollection => canDeliver || status == 'delivered';
   Map<String, dynamic> get customerObj => J.map(detail['customer']);
-  String get customerMobile =>
-      J.str(customerObj['mobile'].toString().isEmpty ? detail['mobile'] : customerObj['mobile']);
+  String get customerMobile => J.str(
+    customerObj['mobile'].toString().isEmpty
+        ? detail['mobile']
+        : customerObj['mobile'],
+  );
 
   List<Map<String, dynamic>> get sellersList {
     final s = detail['sellers'];
@@ -6455,7 +7511,8 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
     final d = res.dataMap;
     // MyOrder.vue: المرتجعات لها واجهة ViewOrder منفصلة
     final a = J.map(d['assignment']);
-    final isReturn = d['is_return_pickup'] == true ||
+    final isReturn =
+        d['is_return_pickup'] == true ||
         a['is_return_pickup'] == true ||
         J.str(a['assignment_type']) == 'return_pickup';
     if (isReturn) {
@@ -6472,8 +7529,7 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
         d['cod_collected'] ?? assignment['cod_collected'] ?? 0,
       );
       tolerance = J.d(d['cash_variance_tolerance'], 100);
-      if (tolerance <= 0) tolerance = 100;
-      if (cashReceived == null) {
+      if (!cashEdited) {
         cashReceived = due;
         cashCtrl.text = due > 0 ? due.toStringAsFixed(2) : '';
         cashCtrl2.text = cashCtrl.text;
@@ -6513,11 +7569,6 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
     }
   }
 
-  double get _cashVal =>
-      double.tryParse(cashCtrl.text.trim()) ??
-      double.tryParse(cashCtrl2.text.trim()) ??
-      -1;
-
   Future<void> confirmPaid({bool fromDeliver = false}) async {
     final v = fromDeliver
         ? double.tryParse(cashCtrl2.text.trim())
@@ -6526,8 +7577,11 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
       toast(context, 'أدخل المبلغ المستلم');
       return;
     }
-    if (due > 0 && (v - due).abs() - 100 > 0.009) {
-      toast(context, 'المبلغ يجب أن يكون ضمن ±100 من المطلوب ($due)');
+    if (due > 0 && (v - due).abs() - tolerance > 0.009) {
+      toast(
+        context,
+        'المبلغ يجب أن يكون ضمن ±${formatAmount(tolerance)} من المطلوب (${formatMoney(due)})',
+      );
       return;
     }
     final method = collectionMethod;
@@ -6555,8 +7609,8 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
         collectMsg = d['status'] == 'SHORTAGE_RECORDED'
             ? 'عجز ${d['shortage']} مسجّل — لا يؤثر على المحتسب'
             : (d['status'] == 'OVERPAID_CHANGE_DUE'
-                ? 'الباقي للعميل: ${d['customer_change']}'
-                : 'تم التحصيل كاملاً');
+                  ? 'الباقي للعميل: ${d['customer_change']}'
+                  : 'تم التحصيل كاملاً');
         deliverShow = false;
       });
       if (fromDeliver) {
@@ -6600,21 +7654,30 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('المطلوب بالنظام: $due'),
-                const Text(
-                  'حدد المبلغ الذي استلمته فعلاً — ضمن ±100 فقط.',
-                  style: TextStyle(fontSize: 11, color: AppColors.greyText),
+                Text('المطلوب بالنظام: ${formatMoney(due)}'),
+                Text(
+                  'حدد المبلغ الذي استلمته فعلاً — المسموح ±${formatAmount(tolerance)} فقط.',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.greyText,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: cashCtrl2,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'المبلغ المستلم فعلاً',
-                    border: OutlineInputBorder(),
-                    isDense: true,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
-                  onChanged: (_) => setD(() {}),
+                  decoration: InputDecoration(
+                    labelText: 'المبلغ المستلم فعلاً',
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                    suffixText: brandCurrency(),
+                  ),
+                  onChanged: (_) {
+                    cashEdited = true;
+                    setD(() {});
+                  },
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
@@ -6627,9 +7690,7 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                     ),
                   ],
                   onChanged: (v) {
-                    setState(
-                      () => collectionMethod = v ?? 'cash',
-                    );
+                    setState(() => collectionMethod = v ?? 'cash');
                     setD(() {});
                   },
                   decoration: const InputDecoration(
@@ -6642,8 +7703,11 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                   const SizedBox(height: 8),
                   TextField(
                     controller: proofCtrl2,
+                    keyboardType: TextInputType.url,
+                    onChanged: (_) => setD(() {}),
                     decoration: const InputDecoration(
-                      labelText: 'مسار إشعار الحوالة (مطلوب)',
+                      labelText: 'رقم مرجع الحوالة أو رابط الإشعار (مطلوب)',
+                      hintText: 'مثال: TRX-123456',
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
@@ -6667,7 +7731,13 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
               child: const Text('إلغاء'),
             ),
             FilledButton(
-              onPressed: deliverBusy ? null : () => confirmDeliver(),
+              onPressed:
+                  deliverBusy ||
+                      double.tryParse(cashCtrl2.text.trim()) == null ||
+                      (collectionMethod == 'transfer' &&
+                          proofCtrl2.text.trim().isEmpty)
+                  ? null
+                  : () => confirmDeliver(),
               child: deliverBusy
                   ? const SizedBox(
                       width: 18,
@@ -6685,7 +7755,7 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
     ).then((_) => setState(() => deliverShow = false));
   }
 
-  void pickupAll() {
+  Future<void> pickupAll() async {
     final unrec = sellersList
         .where((x) => x['pay_method'] == null || '${x['pay_method']}'.isEmpty)
         .toList();
@@ -6693,13 +7763,19 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
       goStatus('picked_up', 'تأكيد الاستلام من المتجر');
       return;
     }
-    for (final s in unrec) {
-      bulkAmounts.putIfAbsent(
-        s['seller_order_id'],
-        () => J.d(s['expected_amount']),
-      );
+    if (payerMode != 'platform') {
+      for (final s in unrec) {
+        final id = s['seller_order_id'];
+        final amount = bulkAmounts.putIfAbsent(
+          id,
+          () => J.d(s['expected_amount']),
+        );
+        bulkCtrls[id] = TextEditingController(
+          text: (amount ?? 0).toStringAsFixed(2),
+        );
+      }
     }
-    showDialog(
+    await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setD) => AlertDialog(
@@ -6712,32 +7788,32 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                 Text(
                   payerMode == 'platform'
                       ? 'المنصة تسدد لتجار هذه المهمة — سيُسجَّل "لم أدفع":'
-                      : 'سجّل الاستلام والدفع نقداً — ضمن ±100 من المتوقع:',
+                      : 'سجّل الاستلام والدفع نقداً — ضمن ±${formatAmount(tolerance)} من المتوقع:',
                   style: const TextStyle(fontSize: 12),
                 ),
                 const SizedBox(height: 8),
                 ...unrec.map((s) {
                   if (payerMode == 'platform') {
                     return Text(
-                      '• ${s['store_name']} — ${s['expected_amount']}',
+                      '• ${s['store_name']} — ${formatMoney(s['expected_amount'])}',
                       style: const TextStyle(fontSize: 12),
                     );
                   }
-                  final ctrl = TextEditingController(
-                    text: (bulkAmounts[s['seller_order_id']] ?? 0)
-                        .toStringAsFixed(2),
-                  );
+                  final ctrl = bulkCtrls[s['seller_order_id']]!;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: TextField(
                       controller: ctrl,
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: InputDecoration(
                         labelText: '${s['store_name']}',
                         helperText:
-                            'المتوقع ${s['expected_amount']} — مسموح ±100',
+                            'المتوقع ${formatMoney(s['expected_amount'])} — مسموح ±${formatAmount(tolerance)}',
                         border: const OutlineInputBorder(),
                         isDense: true,
+                        suffixText: brandCurrency(),
                       ),
                       onChanged: (v) => bulkAmounts[s['seller_order_id']] =
                           double.tryParse(v),
@@ -6749,7 +7825,7 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: bulkBusy ? null : () => Navigator.pop(ctx),
               child: const Text('إلغاء'),
             ),
             FilledButton(
@@ -6758,8 +7834,9 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                   : () async {
                       setD(() => bulkBusy = true);
                       await _confirmBulkPickup(unrec);
-                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (!ctx.mounted) return;
                       setD(() => bulkBusy = false);
+                      Navigator.pop(ctx);
                     },
               child: const Text('تأكيد الاستلام'),
             ),
@@ -6767,11 +7844,14 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
         ),
       ),
     );
+    for (final ctrl in bulkCtrls.values) {
+      ctrl.dispose();
+    }
+    bulkCtrls.clear();
+    bulkShow = false;
   }
 
-  Future<void> _confirmBulkPickup(
-    List<Map<String, dynamic>> unrec,
-  ) async {
+  Future<void> _confirmBulkPickup(List<Map<String, dynamic>> unrec) async {
     final payMethod = payerMode == 'platform' ? 'unpaid' : 'cash';
     if (payMethod == 'cash') {
       for (final s in unrec) {
@@ -6780,10 +7860,10 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
           toast(context, 'أدخل مبلغاً صحيحاً لـ ${s['store_name']}');
           return;
         }
-        if ((v - J.d(s['expected_amount'])).abs() - 100 > 0.009) {
+        if ((v - J.d(s['expected_amount'])).abs() - tolerance > 0.009) {
           toast(
             context,
-            '${s['store_name']}: المبلغ يجب أن يكون ضمن ±100',
+            '${s['store_name']}: المبلغ يجب أن يكون ضمن ±${formatAmount(tolerance)}',
           );
           return;
         }
@@ -6795,11 +7875,11 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
       final res = await app.api.collectionSellerCash(
         id: widget.id,
         sellerOrderId: s['seller_order_id'],
-        amountHanded:
-            payMethod == 'cash' ? (bulkAmounts[s['seller_order_id']] ?? 0) : 0,
+        amountHanded: payMethod == 'cash'
+            ? (bulkAmounts[s['seller_order_id']] ?? 0)
+            : 0,
         payMethod: payMethod,
-        idempotencyKey:
-            'seller-cash-${widget.id}-${s['seller_order_id']}',
+        idempotencyKey: 'seller-cash-${widget.id}-${s['seller_order_id']}',
       );
       if (!res.ok) failed.add('${s['store_name']}: ${res.message}');
     }
@@ -6820,8 +7900,7 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
     } else if (payerMode == 'courier') {
       dialogPayMethod = 'cash';
     } else {
-      dialogPayMethod =
-          s['pay_method'] == 'unpaid' ? 'unpaid' : 'cash';
+      dialogPayMethod = s['pay_method'] == 'unpaid' ? 'unpaid' : 'cash';
     }
     final prev = s['cash_handed'];
     dialogAmountCtrl.text = (s['pay_method'] == 'cash' && prev != null)
@@ -6839,43 +7918,51 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'المستحق للتاجر (منتجات فقط) ${s['expected_amount']}',
+                  'المستحق للتاجر (منتجات فقط) ${formatMoney(s['expected_amount'])}',
                   style: const TextStyle(fontSize: 12),
                 ),
                 if (J.str(s['delivery_share']).isNotEmpty &&
                     J.str(s['delivery_share']) != '0')
                   Text(
-                    'التوصيل (${s['delivery_share']}) للمنصة وليس للتاجر',
+                    'التوصيل (${formatMoney(s['delivery_share'])}) للمنصة وليس للتاجر',
                     style: const TextStyle(fontSize: 11),
                   ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: dialogAmountCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: InputDecoration(
                     labelText: 'المبلغ',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                     isDense: true,
+                    suffixText: brandCurrency(),
                   ),
                 ),
                 if (payerMode == 'both') ...[
-                  Row(
-                    children: [
-                      Radio<String>(
+                  const SizedBox(height: 8),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(
                         value: 'cash',
-                        groupValue: dialogPayMethod,
-                        onChanged: (v) =>
-                            setD(() => dialogPayMethod = v ?? 'cash'),
+                        label: Text('دفعت نقداً'),
+                        icon: Icon(Icons.payments_outlined, size: 16),
                       ),
-                      const Text('دفعت نقداً'),
-                      Radio<String>(
+                      ButtonSegment(
                         value: 'unpaid',
-                        groupValue: dialogPayMethod,
-                        onChanged: (v) =>
-                            setD(() => dialogPayMethod = v ?? 'cash'),
+                        label: Text('لم أدفع'),
+                        icon: Icon(Icons.storefront_outlined, size: 16),
                       ),
-                      const Text('لم أدفع — على المنصة'),
                     ],
+                    selected: {dialogPayMethod},
+                    onSelectionChanged: (value) =>
+                        setD(() => dialogPayMethod = value.first),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'لم أدفع: يبقى المبلغ على المنصة ولا يُخصم منك.',
+                    style: TextStyle(fontSize: 11, color: AppColors.greyText),
                   ),
                 ],
                 TextField(
@@ -6920,8 +8007,8 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
       return;
     }
     if (dialogPayMethod == 'cash' &&
-        (v! - J.d(s['expected_amount'])).abs() - 100 > 0.009) {
-      toast(context, 'المبلغ يجب أن يكون ضمن ±100');
+        (v! - J.d(s['expected_amount'])).abs() - tolerance > 0.009) {
+      toast(context, 'المبلغ يجب أن يكون ضمن ±${formatAmount(tolerance)}');
       return;
     }
     setState(() => dialogBusy = true);
@@ -6933,25 +8020,13 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
       note: dialogNoteCtrl.text.trim().isEmpty
           ? null
           : dialogNoteCtrl.text.trim(),
-      idempotencyKey:
-          'seller-cash-${widget.id}-${s['seller_order_id']}',
+      idempotencyKey: 'seller-cash-${widget.id}-${s['seller_order_id']}',
     );
     if (!mounted) return;
     setState(() => dialogBusy = false);
     if (res.ok) {
       toast(context, 'تم حفظ التاجر');
       await load();
-      final nxt = sellersList
-          .where(
-            (x) =>
-                (x['pay_method'] == null ||
-                    '${x['pay_method']}'.isEmpty) &&
-                x['seller_order_id'] != s['seller_order_id'],
-          )
-          .toList();
-      if (nxt.isNotEmpty && !isDone && mounted) {
-        openSellerDialog(nxt.first);
-      }
     } else {
       toast(context, res.message);
     }
@@ -6973,7 +8048,10 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text('تعذر تحميل الطلب'),
-              TextButton(onPressed: () => load(), child: const Text('إعادة المحاولة')),
+              TextButton(
+                onPressed: () => load(),
+                child: const Text('إعادة المحاولة'),
+              ),
             ],
           ),
         ),
@@ -6985,7 +8063,9 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
           : customerObj['payment_method'],
     );
     final paymentLabel = due > 0
-        ? (payMethod == 'COD' ? 'عند الاستلام (كاش)' : 'مطلوب تحصيل: $payMethod')
+        ? (payMethod == 'COD'
+              ? 'عند الاستلام (كاش)'
+              : 'مطلوب تحصيل: $payMethod')
         : 'مدفوع';
     return Scaffold(
       appBar: AppBar(title: Text('تفاصيل الطلب $orderNo')),
@@ -7010,8 +8090,8 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                           final color = e.key < stepIndex
                               ? AppColors.success
                               : (e.key == stepIndex
-                                  ? AppColors.orange
-                                  : AppColors.greyBorder);
+                                    ? AppColors.orange
+                                    : AppColors.greyBorder);
                           return Chip(
                             label: Text(
                               e.value,
@@ -7027,7 +8107,7 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                         }),
                         Chip(
                           label: Text(
-                            due > 0 ? 'تحصيل: $due' : 'مدفوع',
+                            due > 0 ? 'تحصيل: ${formatMoney(due)}' : 'مدفوع',
                             style: const TextStyle(fontSize: 11),
                           ),
                         ),
@@ -7092,19 +8172,16 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                           border: OutlineInputBorder(),
                           isDense: true,
                         ),
-                        onChanged: (v) => failReason = v,
+                        onChanged: (v) => setState(() => failReason = v),
                       ),
                       const SizedBox(height: 4),
                       FilledButton(
                         style: FilledButton.styleFrom(
                           backgroundColor: Colors.red,
                         ),
-                        onPressed: busy || failCtrl.text.trim().isEmpty
+                        onPressed: busy || failReason.trim().isEmpty
                             ? null
-                            : () => goStatus(
-                                  'failed',
-                                  failCtrl.text.trim(),
-                                ),
+                            : () => goStatus('failed', failReason.trim()),
                         child: const Text('تسجيل تعذر'),
                       ),
                     ],
@@ -7125,20 +8202,40 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                     ),
                     Text('رقم الطلب: $orderNo'),
                     Text('الحالة: $statusLabel'),
-                    Text(
-                      'العميل: ${J.str(customerObj['name'], '-')}',
-                    ),
+                    Text('العميل: ${J.str(customerObj['name'], '-')}'),
                     Text(
                       'جوال العميل: ${customerMobile.isEmpty ? '-' : customerMobile}',
                     ),
-                    Text(
-                      'عنوان العميل: ${J.str(customerObj['address'], '-')}',
-                    ),
+                    Text('عنوان العميل: ${J.str(customerObj['address'], '-')}'),
                     if (J.str(customerObj['delivery_time']).isNotEmpty)
                       Text('وقت التوصيل: ${customerObj['delivery_time']}'),
                     if (J.str(customerObj['order_note']).isNotEmpty)
                       Text('ملاحظة العميل: ${customerObj['order_note']}'),
                     Text('طريقة الدفع: $paymentLabel'),
+                    if (customerMobile.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      ContactActions(
+                        phone: customerMobile,
+                        callLabel: 'اتصال',
+                        messageLabel: 'واتساب',
+                        messageIcon: Icons.chat_outlined,
+                        onCall: () => openTel(customerMobile),
+                        onMessage: () => openWhatsApp(
+                          customerMobile,
+                          text: 'مرحباً، أنا مندوب التوصيل بخصوص طلبك $orderNo',
+                        ),
+                        onCopy: () => copyText(context, customerMobile),
+                      ),
+                    ],
+                    if (J.str(customerObj['address']).isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () =>
+                            openMapsNavigation(J.str(customerObj['address'])),
+                        icon: const Icon(Icons.map_outlined, size: 18),
+                        label: const Text('الاتجاهات إلى العميل'),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -7154,9 +8251,19 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                       'التحصيل من العميل',
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
-                    Text('المطلوب (النظام): $codTotal'),
-                    Text('المحصّل حتى الآن: $collected'),
-                    Text('المتبقي: $remaining'),
+                    Text('المطلوب (النظام): ${formatMoney(codTotal)}'),
+                    Text('المحصّل نقداً: ${formatMoney(collected)}'),
+                    if (transferPending > 0.009)
+                      Text(
+                        'حوالات بانتظار التحقق: ${formatMoney(transferPending)}',
+                        style: const TextStyle(color: AppColors.greyText),
+                      ),
+                    if (transferVerified > 0.009)
+                      Text(
+                        'حوالات تم التحقق منها: ${formatMoney(transferVerified)}',
+                        style: TextStyle(color: AppColors.successText),
+                      ),
+                    Text('المتبقي: ${formatMoney(remaining)}'),
                     if (settlementPreview.isNotEmpty)
                       Container(
                         margin: const EdgeInsets.only(top: 8),
@@ -7166,7 +8273,7 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          'دفعت للتجار ${settlementPreview['sellers_paid_total']} • حصلت من العميل ${settlementPreview['cod_collected']} • المتبقي ${settlementPreview['cod_due']}',
+                          'دفعت للتجار ${formatMoney(settlementPreview['sellers_paid_total'])} • حصلت من العميل ${formatMoney(settlementPreview['cod_collected'])} • المتبقي ${formatMoney(settlementPreview['cod_due'])}',
                           style: const TextStyle(fontSize: 11),
                         ),
                       ),
@@ -7174,29 +8281,34 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                       const SizedBox(height: 8),
                       TextField(
                         controller: cashCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        onChanged: (_) {
+                          cashEdited = true;
+                          setState(() {});
+                        },
+                        decoration: InputDecoration(
                           labelText: 'المبلغ المستلم فعلاً من العميل',
-                          border: OutlineInputBorder(),
+                          helperText:
+                              'المسموح ±${formatAmount(tolerance)} عن المطلوب',
+                          border: const OutlineInputBorder(),
                           isDense: true,
+                          suffixText: brandCurrency(),
                         ),
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
                         initialValue: collectionMethod,
                         items: const [
-                          DropdownMenuItem(
-                            value: 'cash',
-                            child: Text('نقدي'),
-                          ),
+                          DropdownMenuItem(value: 'cash', child: Text('نقدي')),
                           DropdownMenuItem(
                             value: 'transfer',
                             child: Text('حوالة / تحويل'),
                           ),
                         ],
-                        onChanged: (v) => setState(
-                          () => collectionMethod = v ?? 'cash',
-                        ),
+                        onChanged: (v) =>
+                            setState(() => collectionMethod = v ?? 'cash'),
                         decoration: const InputDecoration(
                           labelText: 'طريقة التحصيل',
                           border: OutlineInputBorder(),
@@ -7206,8 +8318,12 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                       if (collectionMethod == 'transfer')
                         TextField(
                           controller: proofCtrl,
+                          keyboardType: TextInputType.url,
+                          onChanged: (_) => setState(() {}),
                           decoration: const InputDecoration(
-                            labelText: 'مسار إشعار الحوالة (مطلوب)',
+                            labelText:
+                                'رقم مرجع الحوالة أو رابط الإشعار (مطلوب)',
+                            hintText: 'مثال: TRX-123456',
                             border: OutlineInputBorder(),
                             isDense: true,
                           ),
@@ -7227,7 +8343,14 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.success,
                           ),
-                          onPressed: busy ? null : () => confirmPaid(),
+                          onPressed:
+                              busy ||
+                                  double.tryParse(cashCtrl.text.trim()) ==
+                                      null ||
+                                  (collectionMethod == 'transfer' &&
+                                      proofCtrl.text.trim().isEmpty)
+                              ? null
+                              : () => confirmPaid(),
                           child: const Text('تأكيد استلام المبلغ'),
                         ),
                       ),
@@ -7270,22 +8393,20 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                       style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
                     ...allItems.asMap().entries.map(
-                          (e) => ListTile(
-                            dense: true,
-                            leading: Text('${e.key + 1}'),
-                            title: Text(
-                              J.str(e.value['product_name']),
-                            ),
-                            subtitle: Text(
-                              '${J.str(e.value['store_name'])}${J.str(e.value['variant_name']).isNotEmpty ? ' • ${e.value['variant_name']}' : ''}',
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                            trailing: Text(
-                              '× ${e.value['quantity']} • ${e.value['sub_total']}',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
+                      (e) => ListTile(
+                        dense: true,
+                        leading: Text('${e.key + 1}'),
+                        title: Text(J.str(e.value['product_name'])),
+                        subtitle: Text(
+                          '${J.str(e.value['store_name'])}${J.str(e.value['variant_name']).isNotEmpty ? ' • ${e.value['variant_name']}' : ''}',
+                          style: const TextStyle(fontSize: 11),
                         ),
+                        trailing: Text(
+                          '× ${e.value['quantity']} • ${formatMoney(e.value['sub_total'])}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -7307,8 +8428,7 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                         child: Padding(
                           padding: const EdgeInsets.all(10),
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 J.str(s['store_name']),
@@ -7317,7 +8437,7 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                                 ),
                               ),
                               Text(
-                                'المستحق للتاجر (منتجات فقط): ${s['expected_amount']}',
+                                'المستحق للتاجر (منتجات فقط): ${formatMoney(s['expected_amount'])}',
                                 style: const TextStyle(fontSize: 12),
                               ),
                               if (J.str(s['mobile']).isNotEmpty)
@@ -7331,9 +8451,36 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                                   style: const TextStyle(fontSize: 12),
                                 ),
                               Text(
-                                'الأصناف: ${J.maps(s['items']).length} • الكمية × ${sellerQty(s).toStringAsFixed(0)} • ${sellerAmount(s).toStringAsFixed(2)}',
+                                'الأصناف: ${J.maps(s['items']).length} • الكمية × ${sellerQty(s).toStringAsFixed(0)} • ${formatMoney(sellerAmount(s))}',
                                 style: const TextStyle(fontSize: 11),
                               ),
+                              if (J.str(s['mobile']).isNotEmpty)
+                                Wrap(
+                                  spacing: 4,
+                                  children: [
+                                    TextButton.icon(
+                                      onPressed: () =>
+                                          openTel(J.str(s['mobile'])),
+                                      icon: const Icon(
+                                        Icons.phone_outlined,
+                                        size: 16,
+                                      ),
+                                      label: const Text('اتصال'),
+                                    ),
+                                    TextButton.icon(
+                                      onPressed: () => openWhatsApp(
+                                        J.str(s['mobile']),
+                                        text:
+                                            'مرحباً، أنا مندوب التوصيل بخصوص طلبك',
+                                      ),
+                                      icon: const Icon(
+                                        Icons.chat_outlined,
+                                        size: 16,
+                                      ),
+                                      label: const Text('واتساب'),
+                                    ),
+                                  ],
+                                ),
                               const SizedBox(height: 6),
                               if (s['pay_method'] == null ||
                                   '${s['pay_method']}'.isEmpty)
@@ -7351,16 +8498,13 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                                     Expanded(
                                       child: Text(
                                         s['pay_method'] == 'cash'
-                                            ? 'دفعت: ${s['cash_handed']} (${s['paid_from'] == 'float' ? 'من العهدة' : 'من جيبك — ذمة لك'})'
+                                            ? 'دفعت: ${formatMoney(s['cash_handed'])} (${s['paid_from'] == 'float' ? 'من العهدة' : 'من جيبك — ذمة لك'})'
                                             : 'لم تدفع — على المنصة',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                        ),
+                                        style: const TextStyle(fontSize: 12),
                                       ),
                                     ),
                                     TextButton(
-                                      onPressed: () =>
-                                          openSellerDialog(s),
+                                      onPressed: () => openSellerDialog(s),
                                       child: const Text('تعديل'),
                                     ),
                                   ],
@@ -7390,9 +8534,8 @@ class _CollectionOrderScreenState extends State<CollectionOrderScreen> {
                     if (!isPickupPhase &&
                         J.str(customerObj['latitude']).isNotEmpty)
                       OutlinedButton.icon(
-                        onPressed: () => openMapsNavigation(
-                          J.str(customerObj['address']),
-                        ),
+                        onPressed: () =>
+                            openMapsNavigation(J.str(customerObj['address'])),
                         icon: const Icon(Icons.map_outlined),
                         label: const Text('الاتجاهات داخل الموقع'),
                       )

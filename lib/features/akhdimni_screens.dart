@@ -7,6 +7,7 @@ import '../core/app_controller.dart';
 import '../core/json_util.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common.dart';
+import '../widgets/driver_ui.dart';
 
 // ===========================================================================
 // مهام أخدمني — طبق الأصل DeliveryBoyAkhdimniPurchaseController + AkhdimniPurchase.vue
@@ -52,7 +53,10 @@ Color akhStatusColor(String? s) {
 // توحيد الاسم لمنع التكرار — نفس منطق الباكند normalizeItemName.
 String akhNormName(String s) {
   var n = s.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
-  n = n.replaceAll(RegExp(r'[أإآ]'), 'ا').replaceAll('ة', 'ه').replaceAll('ى', 'ي');
+  n = n
+      .replaceAll(RegExp(r'[أإآ]'), 'ا')
+      .replaceAll('ة', 'ه')
+      .replaceAll('ى', 'ي');
   return n;
 }
 
@@ -64,6 +68,7 @@ class AkhOrdersScreen extends StatefulWidget {
 
 class _AkhOrdersScreenState extends State<AkhOrdersScreen> {
   bool loading = false;
+  String? error;
   List<Map<String, dynamic>> orders = [];
   String sort = 'oldest';
 
@@ -74,15 +79,23 @@ class _AkhOrdersScreenState extends State<AkhOrdersScreen> {
   }
 
   Future<void> load() async {
-    setState(() => loading = true);
+    setState(() {
+      loading = true;
+      error = null;
+    });
     final res = await app.api.akhOrders(sort: sort);
     if (!mounted) return;
-    setState(() => loading = false);
     if (!res.ok) {
-      toast(context, res.message.isEmpty ? 'تعذر التحميل' : res.message);
+      setState(() {
+        loading = false;
+        error = res.message.isEmpty ? 'تعذر تحميل المهام' : res.message;
+      });
       return;
     }
-    setState(() => orders = J.maps(res.raw['data']));
+    setState(() {
+      loading = false;
+      orders = J.maps(res.raw['data']);
+    });
   }
 
   @override
@@ -94,33 +107,26 @@ class _AkhOrdersScreenState extends State<AkhOrdersScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('مهام أخدمني',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          const Text(
+            'مهام أخدمني',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ChoiceChip(
-                  label: const Text('الأقدم أولاً'),
-                  selected: sort == 'oldest',
-                  onSelected: (_) {
-                    setState(() => sort = 'oldest');
-                    load();
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ChoiceChip(
-                  label: const Text('الأحدث أولاً'),
-                  selected: sort == 'newest',
-                  onSelected: (_) {
-                    setState(() => sort = 'newest');
-                    load();
-                  },
-                ),
-              ),
-            ],
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<String>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: 'oldest', label: Text('الأقدم أولاً')),
+                ButtonSegment(value: 'newest', label: Text('الأحدث أولاً')),
+              ],
+              selected: {sort},
+              onSelectionChanged: (s) {
+                if (s.first == sort) return;
+                setState(() => sort = s.first);
+                load();
+              },
+            ),
           ),
           const SizedBox(height: 12),
           if (loading)
@@ -128,6 +134,30 @@ class _AkhOrdersScreenState extends State<AkhOrdersScreen> {
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: CircularProgressIndicator(),
+              ),
+            )
+          else if (error != null)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                  const SizedBox(height: 6),
+                  OutlinedButton.icon(
+                    onPressed: load,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('إعادة المحاولة'),
+                  ),
+                ],
               ),
             )
           else if (orders.isEmpty)
@@ -164,20 +194,28 @@ class _AkhOrdersScreenState extends State<AkhOrdersScreen> {
                               child: Text(
                                 '#${o['id']} — ${J.str(o['dropoff_name'], '—')}',
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.w800, fontSize: 15),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                ),
                               ),
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: akhStatusColor(st).withValues(alpha: 0.15),
+                                color: akhStatusColor(
+                                  st,
+                                ).withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 akhStatusLabel(st),
                                 style: const TextStyle(
-                                    fontSize: 11, fontWeight: FontWeight.w700),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                           ],
@@ -185,9 +223,13 @@ class _AkhOrdersScreenState extends State<AkhOrdersScreen> {
                         if (J.str(o['dropoff_address']).isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Text(J.str(o['dropoff_address']),
-                                style: const TextStyle(
-                                    fontSize: 12, color: AppColors.greyText)),
+                            child: Text(
+                              J.str(o['dropoff_address']),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.greyText,
+                              ),
+                            ),
                           ),
                         if (J.str(o['description']).isNotEmpty)
                           Padding(
@@ -201,18 +243,28 @@ class _AkhOrdersScreenState extends State<AkhOrdersScreen> {
                           ),
                         const SizedBox(height: 6),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'الإجمالي: ${J.d(o['final_total']).toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.red),
+                            Expanded(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Text(
+                                  'الإجمالي: ${formatMoney(o['final_total'])}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                              ),
                             ),
-                            Text('فتح ←',
-                                style: TextStyle(
-                                    color: AppColors.orange,
-                                    fontWeight: FontWeight.w700)),
+                            const SizedBox(width: 8),
+                            Text(
+                              'فتح ←',
+                              style: TextStyle(
+                                color: AppColors.orange,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -241,9 +293,9 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
   Map<String, dynamic> order = {};
   final quickName = TextEditingController();
   final quickPrice = TextEditingController();
+  final Map<dynamic, TextEditingController> priceCtrls = {};
 
-  List<Map<String, dynamic>> get items =>
-      J.maps(order['purchase_items']);
+  List<Map<String, dynamic>> get items => J.maps(order['purchase_items']);
   bool get isPurchaseRequired => J.flag(order['is_purchase_required']);
   String get activeStatus => J.str(order['active_status']);
 
@@ -269,7 +321,9 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
   double get itemsTotal {
     var t = 0.0;
     for (final it in items) {
-      t += J.d(it['unit_price']) * (J.d(it['quantity'], 1) == 0 ? 1 : J.d(it['quantity'], 1));
+      t +=
+          J.d(it['unit_price']) *
+          (J.d(it['quantity'], 1) == 0 ? 1 : J.d(it['quantity'], 1));
     }
     return t;
   }
@@ -284,7 +338,22 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
   void dispose() {
     quickName.dispose();
     quickPrice.dispose();
+    for (final c in priceCtrls.values) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  TextEditingController priceCtrlFor(Map<String, dynamic> it) {
+    final c = priceCtrls.putIfAbsent(
+      it['id'],
+      () => TextEditingController(
+        text: J.d(it['unit_price']).toStringAsFixed(2) == '0.00'
+            ? ''
+            : J.d(it['unit_price']).toStringAsFixed(2),
+      ),
+    );
+    return c;
   }
 
   void syncTotalsLocal() {
@@ -299,8 +368,9 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
   bool isDuplicate(String name, [dynamic excludeId]) {
     final n = akhNormName(name);
     if (n.isEmpty) return false;
-    return items.any((it) =>
-        it['id'] != excludeId && akhNormName(J.str(it['name'])) == n);
+    return items.any(
+      (it) => it['id'] != excludeId && akhNormName(J.str(it['name'])) == n,
+    );
   }
 
   Future<void> load() async {
@@ -326,8 +396,10 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
     }
     final data = J.map(res.raw['data']);
     if (data.isNotEmpty) setState(() => order = data);
-    toast(context,
-        res.message.isEmpty ? 'تم تجهيز المنتجات — أدخل السعر' : res.message);
+    toast(
+      context,
+      res.message.isEmpty ? 'تم تجهيز المنتجات — أدخل السعر' : res.message,
+    );
   }
 
   Future<void> quickAdd() async {
@@ -347,7 +419,10 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
     }
     setState(() => busy = true);
     final res = await app.api.akhAddItem(
-        id: widget.id, name: name, unitPrice: price);
+      id: widget.id,
+      name: name,
+      unitPrice: price,
+    );
     if (!mounted) return;
     setState(() => busy = false);
     if (!res.ok) {
@@ -410,9 +485,12 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
       removed = list.removeAt(idx);
       setState(() => order['purchase_items'] = list);
       syncTotalsLocal();
+      final ctrl = priceCtrls.remove(it['id']);
+      if (ctrl != null) {
+        Future.delayed(const Duration(milliseconds: 400), ctrl.dispose);
+      }
     }
-    final res =
-        await app.api.akhDeleteItem(id: widget.id, itemId: it['id']);
+    final res = await app.api.akhDeleteItem(id: widget.id, itemId: it['id']);
     if (!mounted) return;
     if (!res.ok) {
       if (removed != null) {
@@ -431,16 +509,21 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
   Future<void> openItemSheet({Map<String, dynamic>? existing}) async {
     final nameCtrl = TextEditingController(text: J.str(existing?['name']));
     final priceCtrl = TextEditingController(
-        text: existing == null
-            ? ''
-            : J.d(existing['unit_price']).toStringAsFixed(2));
+      text: existing == null
+          ? ''
+          : J.d(existing['unit_price']).toStringAsFixed(2),
+    );
     final qtyCtrl = TextEditingController(
-        text: '${J.d(existing?['quantity'], 1).toStringAsFixed(1)}');
+      text: '${J.d(existing?['quantity'], 1).toStringAsFixed(1)}',
+    );
     final storeCtrl = TextEditingController(
-        text: J.str(existing?['store_name'] ??
+      text: J.str(
+        existing?['store_name'] ??
             (existing?['seller'] is Map
                 ? (existing?['seller']['store_name'] ?? '')
-                : '')));
+                : ''),
+      ),
+    );
     String? pickedImagePath;
 
     final saved = await showModalBottomSheet<Map<String, dynamic>?>(
@@ -451,24 +534,30 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
       ),
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+        ),
         child: StatefulBuilder(
           builder: (ctx, setSheet) => Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(existing == null ? 'منتج + سعر فقط' : 'تعديل المنتج',
-                  style: const TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.w800)),
+              Text(
+                existing == null ? 'منتج + سعر فقط' : 'تعديل المنتج',
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: nameCtrl,
                 decoration: const InputDecoration(
-                    labelText: 'اسم المنتج *',
-                    border: OutlineInputBorder()),
+                  labelText: 'اسم المنتج *',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 10),
               Row(
@@ -476,21 +565,27 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
                   Expanded(
                     child: TextField(
                       controller: priceCtrl,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
-                          labelText: 'السعر *',
-                          border: OutlineInputBorder()),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'السعر *',
+                        suffixText: brandCurrency(),
+                        border: const OutlineInputBorder(),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: TextField(
                       controller: qtyCtrl,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: const InputDecoration(
-                          labelText: 'الكمية', border: OutlineInputBorder()),
+                        labelText: 'الكمية',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
                   ),
                 ],
@@ -499,8 +594,9 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
               TextField(
                 controller: storeCtrl,
                 decoration: const InputDecoration(
-                    labelText: 'المتجر (اختياري)',
-                    border: OutlineInputBorder()),
+                  labelText: 'المتجر (اختياري)',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 10),
               Row(
@@ -509,16 +605,19 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () async {
                         final f = await ImagePicker().pickImage(
-                            source: ImageSource.camera,
-                            requestFullMetadata: false);
+                          source: ImageSource.camera,
+                          requestFullMetadata: false,
+                        );
                         if (f != null) {
                           setSheet(() => pickedImagePath = f.path);
                         }
                       },
                       icon: const Icon(Icons.camera_alt_outlined),
-                      label: Text(pickedImagePath == null
-                          ? 'صورة (اختياري)'
-                          : 'تم اختيار صورة ✓'),
+                      label: Text(
+                        pickedImagePath == null
+                            ? 'صورة (اختياري)'
+                            : 'تم اختيار صورة ✓',
+                      ),
                     ),
                   ),
                 ],
@@ -542,10 +641,12 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
         ),
       ),
     );
-    nameCtrl.dispose();
-    priceCtrl.dispose();
-    qtyCtrl.dispose();
-    storeCtrl.dispose();
+    Future.delayed(const Duration(milliseconds: 400), () {
+      nameCtrl.dispose();
+      priceCtrl.dispose();
+      qtyCtrl.dispose();
+      storeCtrl.dispose();
+    });
     if (saved == null || !mounted) return;
 
     final name = J.str(saved['name']);
@@ -561,8 +662,10 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
     final qty = double.tryParse(J.str(saved['qty'])) ?? 1;
     MultipartFile? img;
     if (J.str(saved['image']).isNotEmpty) {
-      img = await MultipartFile.fromFile(J.str(saved['image']),
-          filename: 'item.jpg');
+      img = await MultipartFile.fromFile(
+        J.str(saved['image']),
+        filename: 'item.jpg',
+      );
     }
     setState(() => busy = true);
     ApiResult res;
@@ -582,8 +685,7 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
         name: name,
         unitPrice: price,
         quantity: qty <= 0 ? 1 : qty,
-        storeName:
-            J.str(saved['store']).isEmpty ? null : J.str(saved['store']),
+        storeName: J.str(saved['store']).isEmpty ? null : J.str(saved['store']),
         image: img,
       );
     }
@@ -611,11 +713,15 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
 
   Future<void> uploadReceipt() async {
     final file = await ImagePicker().pickImage(
-        source: ImageSource.camera, requestFullMetadata: false);
+      source: ImageSource.camera,
+      requestFullMetadata: false,
+    );
     if (file == null || !mounted) return;
     setState(() => busy = true);
-    final img =
-        await MultipartFile.fromFile(file.path, filename: 'receipt.jpg');
+    final img = await MultipartFile.fromFile(
+      file.path,
+      filename: 'receipt.jpg',
+    );
     final res = await app.api.akhUploadReceipt(id: widget.id, receipt: img);
     if (!mounted) return;
     setState(() => busy = false);
@@ -715,288 +821,345 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : order.isEmpty
-              ? const Center(child: Text('تعذر تحميل الطلب'))
-              : RefreshIndicator(
-                  color: AppColors.orange,
-                  onRefresh: load,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
+          ? const Center(child: Text('تعذر تحميل الطلب'))
+          : RefreshIndicator(
+              color: AppColors.orange,
+              onRefresh: load,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(J.str(order['dropoff_name'], 'عميل'),
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w800, fontSize: 17)),
+                      Expanded(
+                        child: Text(
+                          J.str(order['dropoff_name'], 'عميل'),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 17,
                           ),
-                          statusChip(),
-                        ],
+                        ),
                       ),
-                      if (J.str(order['dropoff_mobile']).isNotEmpty)
-                        Text(J.str(order['dropoff_mobile']),
-                            style: const TextStyle(
-                                color: AppColors.greyText, fontSize: 13)),
-                      if (J.str(order['description']).isNotEmpty)
-                        Card(
-                          margin: const EdgeInsets.only(top: 10),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('طلب العميل',
-                                    style: TextStyle(
-                                        color: AppColors.greyText,
-                                        fontSize: 12)),
-                                const SizedBox(height: 4),
-                                Text(J.str(order['description']),
-                                    style: const TextStyle(fontSize: 14)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      if (isPurchaseRequired) ...[
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      statusChip(),
+                    ],
+                  ),
+                  if (J.str(order['dropoff_mobile']).isNotEmpty) ...[
+                    Text(
+                      J.str(order['dropoff_mobile']),
+                      style: const TextStyle(
+                        color: AppColors.greyText,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ContactActions(
+                      phone: J.str(order['dropoff_mobile']),
+                      onCall: () => openTel(J.str(order['dropoff_mobile'])),
+                      onMessage: () =>
+                          openWhatsApp(J.str(order['dropoff_mobile'])),
+                      onCopy: () =>
+                          copyText(context, J.str(order['dropoff_mobile'])),
+                      messageLabel: 'واتساب',
+                      messageIcon: Icons.chat,
+                    ),
+                  ],
+                  if (J.str(order['description']).isNotEmpty)
+                    Card(
+                      margin: const EdgeInsets.only(top: 10),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('🛒 المشتريات (${items.length})',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w800, fontSize: 16)),
+                            const Text(
+                              'طلب العميل',
+                              style: TextStyle(
+                                color: AppColors.greyText,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
                             Text(
-                              '${itemsTotal.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.red),
+                              J.str(order['description']),
+                              style: const TextStyle(fontSize: 14),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.tonal(
-                            onPressed: splitting ? null : autoSplit,
-                            child: splitting
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2))
-                                : const Text('✨ تجهيز تلقائي'),
+                      ),
+                    ),
+                  if (isPurchaseRequired) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '🛒 المشتريات (${items.length})',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: TextField(
-                                controller: quickName,
-                                decoration: const InputDecoration(
-                                  hintText: 'اسم المنتج',
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 8),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              flex: 2,
-                              child: TextField(
-                                controller: quickPrice,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                decoration: const InputDecoration(
-                                  hintText: 'السعر',
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 8),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            FilledButton(
-                              onPressed: busy ? null : quickAdd,
-                              child: const Icon(Icons.add),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        if (items.isEmpty)
-                          OutlinedButton(
-                            onPressed: splitting ? null : autoSplit,
-                            child: const Text('✨ تجهيز تلقائي من وصف العميل'),
-                          )
-                        else
-                          ...items.map((it) {
-                            final priceCtrl = TextEditingController(
-                                text: J.d(it['unit_price'])
-                                        .toStringAsFixed(2) ==
-                                    '0.00'
-                                    ? ''
-                                    : J.d(it['unit_price']).toStringAsFixed(2));
-                            final store = J.str(it['store_name']).isNotEmpty
-                                ? J.str(it['store_name'])
-                                : (it['seller'] is Map
-                                    ? J.str(it['seller']['store_name'])
-                                    : '');
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 6),
-                              color: J.d(it['unit_price']) > 0
-                                  ? AppColors.white
-                                  : const Color(0xFFFFFDF3),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                side: BorderSide(
-                                  color: J.d(it['unit_price']) > 0
-                                      ? AppColors.greyBorder
-                                      : Colors.amber,
-                                ),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: InkWell(
-                                            onTap: () =>
-                                                openItemSheet(existing: it),
-                                            child: Text(
-                                              '${J.str(it['name'])}${J.d(it['quantity'], 1) > 1 ? ' ×${J.d(it['quantity'], 1).toStringAsFixed(1)}' : ''}',
-                                              style: const TextStyle(
-                                                  fontWeight: FontWeight.w700),
-                                            ),
-                                          ),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete_outline,
-                                              color: Colors.red),
-                                          onPressed: () => askDelete(it),
-                                        ),
-                                      ],
-                                    ),
-                                    if (store.isNotEmpty)
-                                      Text('🏪 $store',
-                                          style: const TextStyle(
-                                              fontSize: 11,
-                                              color: AppColors.greyText)),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        const Text('السعر: ',
-                                            style: TextStyle(fontSize: 13)),
-                                        Expanded(
-                                          child: TextField(
-                                            controller: priceCtrl,
-                                            keyboardType: const TextInputType
-                                                .numberWithOptions(
-                                                decimal: true),
-                                            textAlign: TextAlign.center,
-                                            decoration: const InputDecoration(
-                                              hintText: '؟',
-                                              border: OutlineInputBorder(),
-                                              contentPadding:
-                                                  EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 6),
-                                            ),
-                                            onSubmitted: (v) =>
-                                                savePrice(it, v),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          '= ${(J.d(it['unit_price']) * (J.d(it['quantity'], 1) == 0 ? 1 : J.d(it['quantity'], 1))).toStringAsFixed(2)}',
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.w800),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }),
-                        const SizedBox(height: 4),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton.icon(
-                            onPressed: () => openItemSheet(),
-                            icon: const Icon(Icons.add),
-                            label: const Text('إضافة بتفاصيل (متجر/صورة)'),
-                          ),
-                        ),
-                        // الإيصال
-                        Card(
-                          child: ListTile(
-                            leading: const Icon(Icons.receipt_outlined),
-                            title: const Text('الإيصال'),
-                            subtitle: J.str(order['receipt_image']).isNotEmpty
-                                ? const Text('مرفوع ✓')
-                                : const Text('لم يُرفع بعد'),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.camera_alt_outlined),
-                              onPressed: busy ? null : uploadReceipt,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            formatMoney(itemsTotal),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: Colors.red,
                             ),
                           ),
                         ),
                       ],
-                      const SizedBox(height: 12),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            children: [
-                              _totalRow('أجور التوصيل',
-                                  J.d(order['delivery_charge'])),
-                              if (isPurchaseRequired)
-                                _totalRow('مبلغ الشراء',
-                                    J.d(order['purchase_amount'])),
-                              const Divider(),
-                              _totalRow('الإجمالي النهائي',
-                                  J.d(order['final_total']),
-                                  big: true),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text('طريقة الدفع',
-                                      style: TextStyle(fontSize: 13)),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.tonal(
+                        onPressed: splitting ? null : autoSplit,
+                        child: splitting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('✨ تجهيز تلقائي'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: TextField(
+                            controller: quickName,
+                            decoration: const InputDecoration(
+                              hintText: 'اسم المنتج',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            controller: quickPrice,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'السعر',
+                              suffixText: brandCurrency(),
+                              border: const OutlineInputBorder(),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          onPressed: busy ? null : quickAdd,
+                          child: const Icon(Icons.add),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (items.isEmpty)
+                      OutlinedButton(
+                        onPressed: splitting ? null : autoSplit,
+                        child: const Text('✨ تجهيز تلقائي من وصف العميل'),
+                      )
+                    else
+                      ...items.map((it) {
+                        final priceCtrl = priceCtrlFor(it);
+                        final store = J.str(it['store_name']).isNotEmpty
+                            ? J.str(it['store_name'])
+                            : (it['seller'] is Map
+                                  ? J.str(it['seller']['store_name'])
+                                  : '');
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          color: J.d(it['unit_price']) > 0
+                              ? AppColors.white
+                              : const Color(0xFFFFFDF3),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(
+                              color: J.d(it['unit_price']) > 0
+                                  ? AppColors.greyBorder
+                                  : Colors.amber,
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () =>
+                                            openItemSheet(existing: it),
+                                        child: Text(
+                                          '${J.str(it['name'])}${J.d(it['quantity'], 1) > 1 ? ' ×${J.d(it['quantity'], 1).toStringAsFixed(1)}' : ''}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () => askDelete(it),
+                                    ),
+                                  ],
+                                ),
+                                if (store.isNotEmpty)
                                   Text(
-                                      J.str(order['payment_method']) == 'COD'
-                                          ? 'عند الاستلام'
-                                          : J.str(order['payment_method']),
+                                    '🏪 $store',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.greyText,
+                                    ),
+                                  ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'السعر: ',
+                                      style: TextStyle(fontSize: 13),
+                                    ),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: priceCtrl,
+                                        keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                              decimal: true,
+                                            ),
+                                        textAlign: TextAlign.center,
+                                        decoration: InputDecoration(
+                                          hintText: '؟',
+                                          suffixText: brandCurrency(),
+                                          border: const OutlineInputBorder(),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                                vertical: 6,
+                                              ),
+                                        ),
+                                        onSubmitted: (v) => savePrice(it, v),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '= ${formatMoney(J.d(it['unit_price']) * (J.d(it['quantity'], 1) == 0 ? 1 : J.d(it['quantity'], 1)))}',
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.w700)),
-                                ],
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () => openItemSheet(),
+                        icon: const Icon(Icons.add),
+                        label: const Text('إضافة بتفاصيل (متجر/صورة)'),
+                      ),
+                    ),
+                    // الإيصال
+                    Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.receipt_outlined),
+                        title: const Text('الإيصال'),
+                        subtitle: J.str(order['receipt_image']).isNotEmpty
+                            ? const Text('مرفوع ✓')
+                            : const Text('لم يُرفع بعد'),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.camera_alt_outlined),
+                          onPressed: busy ? null : uploadReceipt,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        children: [
+                          _totalRow(
+                            'أجور التوصيل',
+                            J.d(order['delivery_charge']),
+                          ),
+                          if (isPurchaseRequired)
+                            _totalRow(
+                              'مبلغ الشراء',
+                              J.d(order['purchase_amount']),
+                            ),
+                          const Divider(),
+                          _totalRow(
+                            'الإجمالي النهائي',
+                            J.d(order['final_total']),
+                            big: true,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'طريقة الدفع',
+                                style: TextStyle(fontSize: 13),
+                              ),
+                              Text(
+                                J.str(order['payment_method']) == 'COD'
+                                    ? 'عند الاستلام'
+                                    : J.str(order['payment_method']),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ],
                           ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  nextStepButton(),
+                  if (effStatus != 'delivered' && effStatus != 'cancelled')
+                    Center(
+                      child: TextButton(
+                        onPressed: busy
+                            ? null
+                            : () => updateStatus('cancelled'),
+                        child: const Text(
+                          'إلغاء الطلب',
+                          style: TextStyle(color: Colors.red),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      nextStepButton(),
-                      if (effStatus != 'delivered' &&
-                          effStatus != 'cancelled')
-                        Center(
-                          child: TextButton(
-                            onPressed:
-                                busy ? null : () => updateStatus('cancelled'),
-                            child: const Text('إلغاء الطلب',
-                                style: TextStyle(color: Colors.red)),
-                          ),
-                        ),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                ),
+                    ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
     );
   }
 
@@ -1007,12 +1170,15 @@ class _AkhOrderDetailScreenState extends State<AkhOrderDetailScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(fontSize: big ? 15 : 13)),
-          Text(
-            value.toStringAsFixed(2),
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: big ? 17 : 14,
-              color: big ? Colors.red : null,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              formatMoney(value),
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: big ? 17 : 14,
+                color: big ? Colors.red : null,
+              ),
             ),
           ),
         ],

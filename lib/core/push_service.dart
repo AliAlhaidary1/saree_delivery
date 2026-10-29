@@ -173,7 +173,8 @@ class PushService {
       FirebaseMessaging.onBackgroundMessage(pushBackgroundHandler);
     } catch (_) {}
 
-    await ensureFcm();
+    // لا نطلب الإذن هنا: الطلب يتم بعد أول إطار (Bootstrap) أو من شاشة
+    // الإشعارات، حتى لا يظهر مربع النظام فوق شاشة البداية بلا سياق.
   }
 
   /// تهيئة FCM كاملة: تهيئة + إذن + توكن + مستمعون. تُستدعى من preInit

@@ -24,6 +24,9 @@ class BrandService {
       final dio = Dio(BaseOptions(
         baseUrl: '$root/customer',
         headers: {'x-access-key': '903361'},
+        connectTimeout: const Duration(seconds: 4),
+        receiveTimeout: const Duration(seconds: 5),
+        sendTimeout: const Duration(seconds: 4),
       ));
       final res = await dio.get('/brand');
       final data = res.data is Map ? (res.data['data'] ?? res.data) : null;

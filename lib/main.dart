@@ -15,7 +15,9 @@ Future<void> main() async {
   } catch (_) {}
   // الإشعارات الفورية: تهيئة Firebase + قناة الإشعارات + معالج الخلفية.
   // آمنة دائماً — تعمل فقط بعد تعبئة FirebaseConfig من Firebase Console.
-  await PushService.preInit();
+  try {
+    await PushService.preInit().timeout(const Duration(seconds: 3));
+  } catch (_) {}
   runApp(const Bootstrap());
 }
 
@@ -32,31 +34,51 @@ class _BootstrapState extends State<Bootstrap> {
   @override
   void initState() {
     super.initState();
-    app
-        .bootstrap()
-        .then((_) {
-          if (!mounted) return;
-          final r = buildRouter();
-          // يربط ضغطات الإشعارات بالتنقل (يفتح الطلب أو قائمة الجارية)
-          PushService.attachRouter(r);
-          setState(() => router = r);
-        })
-        .catchError((_) {
-          if (!mounted) return;
-          final r = buildRouter();
-          PushService.attachRouter(r);
-          setState(() => router = r);
-        });
+    // مدة الأنيميشن المبسط (1400ms) — سريع بدون انتظار زائد
+    final splashMin = Future<void>.delayed(const Duration(milliseconds: 1400));
+    Future.wait([
+      // حد أقصى للإقلاع حتى لا تعلق شاشة البداية عند تعذر الشبكة.
+      app
+          .bootstrap()
+          .timeout(const Duration(seconds: 8))
+          .catchError((_) {}),
+      splashMin,
+    ]).then((_) {
+      if (!mounted) return;
+      final r = buildRouter();
+      // يربط ضغطات الإشعارات بالتنقل (يفتح الطلب أو قائمة الجارية)
+      PushService.attachRouter(r);
+      setState(() => router = r);
+      // طلب إذن الإشعارات بعد ظهور التطبيق (وليس فوق شاشة البداية).
+      Future<void>.delayed(const Duration(milliseconds: 900), () {
+        if (app.isLoggedIn) {
+          PushService.ensureFcm().catchError((_) => false);
+        }
+      });
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // انتقال واحد متلاشي: سبلاش -> تطبيق (بدون قفزة بين واجهتين)
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: child,
+      ),
+      child: _child(),
+    );
+  }
+
+  Widget _child() {
     if (router == null) {
       return const MaterialApp(
+        key: ValueKey('splash'),
         debugShowCheckedModeBanner: false,
         home: BrandedSplash(),
       );
     }
-    return DeliveryApp(router: router!);
+    return DeliveryApp(key: const ValueKey('app'), router: router!);
   }
 }

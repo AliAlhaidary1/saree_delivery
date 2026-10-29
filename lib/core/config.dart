@@ -1,7 +1,7 @@
 class AppConfig {
   static const defaultApiUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'https://admin.marabmall.cloud',
+    defaultValue: 'https://admin.sreamart.com',
   );
 
   static const apiSubUrl = '/api';
