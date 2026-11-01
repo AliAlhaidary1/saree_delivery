@@ -50,7 +50,6 @@ class _BrandedSkeletonState extends State<BrandedSkeleton>
 
   @override
   Widget build(BuildContext context) {
-    final b = widget.brand ?? BrandConfig.defaults;
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
@@ -70,11 +69,11 @@ class _BrandedSkeletonState extends State<BrandedSkeleton>
                 (t * 1.6 - 0.3).clamp(0.0, 1.0),
                 1.0,
               ],
-              colors: [
-                b.greyBg,
-                b.greyBg,
-                b.orange.withValues(alpha: 0.22),
-                b.greyBg,
+              colors: const [
+                Color(0xFFE9EBEE),
+                Color(0xFFE9EBEE),
+                Color(0xFFF7F8FA),
+                Color(0xFFE9EBEE),
               ],
             ),
           ),

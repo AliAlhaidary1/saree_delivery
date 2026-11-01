@@ -5,7 +5,8 @@ import 'dart:async';
 enum OtpSendKind { hardLimit, cooldown, error }
 
 const String kOtpSuccessMessage = 'تم إرسال الرمز بنجاح';
-const String kOtpReassureHint = 'لم يصلك الرمز؟ لا تقلق، قد يتأخر قليلاً وسيصلك';
+const String kOtpReassureHint =
+    'لم يصلك الرمز؟ لا تقلق، قد يتأخر قليلاً وسيصلك';
 const String kOtpHardLimitFallback =
     'تجاوزت الحد المسموح لطلب رموز التحقق، يرجى المحاولة لاحقاً';
 const String kOtpResendLabel = 'إعادة إرسال الرمز';
@@ -86,10 +87,7 @@ int _toRetryInt(dynamic value) {
 }
 
 int extractOtpRetryAfter(Map<String, dynamic> raw, [String? message]) {
-  final candidates = <dynamic>[
-    raw['retry_after'],
-    raw['retryAfter'],
-  ];
+  final candidates = <dynamic>[raw['retry_after'], raw['retryAfter']];
   final data = raw['data'];
   if (data is Map) candidates.add(data['retry_after']);
   final err = raw['error'];
@@ -195,7 +193,7 @@ class OtpResendGate {
   Timer? _unlockTimer;
   Timer? _bgTimer;
   int bgTries = 0;
-  static const int maxBackgroundTries = 2;
+  static const int maxBackgroundTries = 0;
 
   bool get canSend => !DateTime.now().isBefore(allowedAt);
   bool get canBackground => bgTries < maxBackgroundTries;

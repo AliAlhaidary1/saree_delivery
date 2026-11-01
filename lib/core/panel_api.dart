@@ -11,10 +11,7 @@ class PanelApi {
         baseUrl: _normalize(baseUrl),
         connectTimeout: const Duration(seconds: 25),
         receiveTimeout: const Duration(seconds: 40),
-        headers: const {
-          'Accept': 'application/json',
-          'platform': 'android',
-        },
+        headers: const {'Accept': 'application/json', 'platform': 'android'},
         validateStatus: (code) => code != null && code < 600,
       ),
     );
@@ -112,6 +109,8 @@ class PanelApi {
     return _guard(() => _dio.post(path, data: data), path: path);
   }
 
+  Future<ApiResult> logout() => post('logout');
+
   Future<ApiResult> delete(String path, [Map<String, dynamic>? query]) {
     return _guard(() => _dio.delete(path, queryParameters: query), path: path);
   }
@@ -137,9 +136,9 @@ class PanelApi {
       post('save_fcm_token', {'token': token});
 
   Future<ApiResult> saveDeliveryFcmToken(String token) => post(
-        'delivery_boy/save_fcm_token',
-        {'token': token, 'fcm_token': token, 'platform': 'android'},
-      );
+    'delivery_boy/save_fcm_token',
+    {'token': token, 'fcm_token': token, 'platform': 'android'},
+  );
 
   // ========= Modern Assignment APIs - طبق الأصل من DeliveryBoyAssignmentApiController =========
   // Backend: listAssignments تدعم status/startDate/endDate/search/page (paginate 20)
@@ -158,6 +157,7 @@ class PanelApi {
       if (search != null && search.isNotEmpty) 'search': search,
     });
   }
+
   Future<ApiResult> assignmentById(dynamic id) =>
       get('delivery_boy/assignments/$id');
   Future<ApiResult> acceptAssignment(dynamic id) =>
@@ -175,6 +175,13 @@ class PanelApi {
       if (codCollected != null) 'cod_collected': codCollected,
     });
   }
+
+  Future<ApiResult> returnRejectedBySeller({
+    required dynamic id,
+    required String reason,
+  }) => post('delivery_boy/assignments/$id/return-rejected', {
+    'reason': reason.trim(),
+  });
 
   // Backend workload(): active_assignment_count/max_capacity/remaining_capacity/assignments/cod_liability
   // ملاحظة: لا يحتوي claim_setting_on — مصدرها settings + diagnostics + available-orders
@@ -266,8 +273,10 @@ class PanelApi {
   // order = {id,status,assignment_type,is_return_pickup,customer,area,seller_count,
   // payment_method,amount_to_collect,checkout_group_id,order_item_id,return_product,...}
   // akhdimni rows: {source:'akhdimni', akhdimni_order_id, status, ...}
-  Future<ApiResult> collectionOrders({String tab = 'new', String sort = 'oldest'}) =>
-      get('delivery_boy/collection/orders', {'tab': tab, 'sort': sort});
+  Future<ApiResult> collectionOrders({
+    String tab = 'new',
+    String sort = 'oldest',
+  }) => get('delivery_boy/collection/orders', {'tab': tab, 'sort': sort});
 
   // ===== Akhdimni (اخدمني) courier tasks — طبق الأصل DeliveryBoyAkhdimniPurchaseController =====
   // sort: oldest (default, FIFO) | newest
@@ -355,43 +364,39 @@ class PanelApi {
   Future<ApiResult> akhDeleteItem({
     required dynamic id,
     required dynamic itemId,
-  }) =>
-      delete('delivery_boy/akhdimni/orders/$id/items/$itemId');
+  }) => delete('delivery_boy/akhdimni/orders/$id/items/$itemId');
 
   // Smart split: turns customer free text into ready draft items (price 0).
   Future<ApiResult> akhAutoSplit({required dynamic id, String? text}) => post(
-        'delivery_boy/akhdimni/orders/$id/auto-split',
-        {if (text != null && text.isNotEmpty) 'text': text},
-      );
+    'delivery_boy/akhdimni/orders/$id/auto-split',
+    {if (text != null && text.isNotEmpty) 'text': text},
+  );
 
   // Manual total fallback (only when no priced items exist server-side).
   Future<ApiResult> akhRecordPurchase({
     required dynamic id,
     required num purchaseAmount,
-  }) =>
-      post('delivery_boy/akhdimni/orders/$id/record-purchase', {
-        'purchase_amount': purchaseAmount,
-      });
+  }) => post('delivery_boy/akhdimni/orders/$id/record-purchase', {
+    'purchase_amount': purchaseAmount,
+  });
 
   Future<ApiResult> akhUploadReceipt({
     required dynamic id,
     required MultipartFile receipt,
-  }) =>
-      postForm(
-        'delivery_boy/akhdimni/orders/$id/upload-receipt',
-        FormData.fromMap({'receipt': receipt}),
-      );
+  }) => postForm(
+    'delivery_boy/akhdimni/orders/$id/upload-receipt',
+    FormData.fromMap({'receipt': receipt}),
+  );
 
   // status: picked_up | out_for_delivery | delivered | cancelled (+note?)
   Future<ApiResult> akhUpdateStatus({
     required dynamic id,
     required String status,
     String? note,
-  }) =>
-      post('delivery_boy/akhdimni/orders/$id/update-status', {
-        'status': status,
-        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
-      });
+  }) => post('delivery_boy/akhdimni/orders/$id/update-status', {
+    'status': status,
+    if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+  });
   // MyOrder.vue: GET collection/orders/{id} -> {assignment, customer, sellers[],
   // pickup_checklist, collection, courier_money, settlement_preview, seller_cash_guard,
   // amount_to_collect, cod_to_collect, cod_collected, cash_variance_tolerance, ...}
@@ -448,17 +453,16 @@ class PanelApi {
   // Wallet.vue handover: POST collection/handover {amount, collection_method, receipt_image?, idempotency_key?}
   Future<ApiResult> collectionHandover({
     required num amount,
+    required String idempotencyKey,
     String collectionMethod = 'cash',
     String? receiptImage,
-    String? idempotencyKey,
   }) {
     return post('delivery_boy/collection/handover', {
       'amount': amount,
       'collection_method': collectionMethod,
       if (receiptImage != null && receiptImage.isNotEmpty)
         'receipt_image': receiptImage,
-      'idempotency_key':
-          idempotencyKey ?? 'ho-${DateTime.now().millisecondsSinceEpoch}',
+      'idempotency_key': idempotencyKey,
     });
   }
 
@@ -509,6 +513,7 @@ class PanelApi {
       if (receipt != null && receipt.isNotEmpty) 'receipt': receipt,
     });
   }
+
   // Backend getWithdrawalRequests: limit/offset/search/type/status
   // ويرجع {withdraw_requests[], balance} — لاحظ الاسم withdraw_requests (بدون al)
   Future<ApiResult> withdrawals({
@@ -619,19 +624,15 @@ class PanelApi {
   Future<ApiResult> deleteAccount({
     required String password,
     String confirmation = 'DELETE',
-  }) =>
-      post('delivery_boy/delete_delivery_boy_account', {
-        'confirmation': confirmation,
-        'password': password,
-      });
+  }) => post('delivery_boy/delete_delivery_boy_account', {
+    'confirmation': confirmation,
+    'password': password,
+  });
   Future<ApiResult> cities() => get('delivery_boy/cities');
   // إشعارات اللوحة: GET get_top_notifications (عام auth) — {unread, notifications}
   Future<ApiResult> topNotifications() => get('get_top_notifications');
   Future<ApiResult> markNotificationRead({dynamic id, bool all = false}) =>
-      get('notification_read', {
-        if (id != null) 'id': id,
-        if (all) 'all': 1,
-      });
+      get('notification_read', {if (id != null) 'id': id, if (all) 'all': 1});
   // تقييمات الموصل (واجهة الزبون — تعرض متوسط تقييمك): GET /customer/delivery_boy_rating
   // ملاحظة: تتطلب توكن زبون غالباً؛ نعرضها إن نجحت وإلا نعتمد بيانات البروفايل
   Future<ApiResult> myRatings({int limit = 10, int offset = 0}) =>

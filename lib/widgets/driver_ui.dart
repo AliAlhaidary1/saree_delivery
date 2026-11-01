@@ -235,11 +235,7 @@ class KpiCard extends StatelessWidget {
                     color: effectiveAccent,
                   ),
                 ),
-                Icon(
-                  Icons.chevron_left,
-                  size: 14,
-                  color: effectiveAccent,
-                ),
+                Icon(Icons.chevron_left, size: 14, color: effectiveAccent),
               ],
             ),
           ],
@@ -359,11 +355,7 @@ class QuickActionTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 2),
-                  Icon(
-                    Icons.chevron_left,
-                    size: 14,
-                    color: AppColors.orange,
-                  ),
+                  Icon(Icons.chevron_left, size: 14, color: AppColors.orange),
                 ],
               ),
             ],
@@ -471,7 +463,11 @@ class _TimelineStep extends StatelessWidget {
                       : active
                       ? Icons.local_shipping
                       : Icons.circle,
-                  size: done ? 16 : active ? 14 : 8,
+                  size: done
+                      ? 16
+                      : active
+                      ? 14
+                      : 8,
                   color: dotColor,
                 ),
               ),
@@ -537,10 +533,7 @@ class DriverActionButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (icon != null) ...[
-                Icon(icon, size: 20),
-                SizedBox(width: 8),
-              ],
+              if (icon != null) ...[Icon(icon, size: 20), SizedBox(width: 8)],
               Text(label),
             ],
           );
@@ -735,93 +728,97 @@ class _IncomingOrderOverlayState extends State<IncomingOrderOverlay> {
     return Material(
       color: AppColors.navy.withValues(alpha: 0.95),
       child: SafeArea(
-        child: LayoutBuilder(builder: (context, constraints) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight - 48),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(height: 12),
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.orange, width: 3),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 48,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(height: 12),
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.orange, width: 3),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$_remaining',
+                          style: TextStyle(
+                            color: AppColors.orange,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
                     ),
-                    child: Center(
+                    SizedBox(height: 16),
+                    Text(
+                      'طلب توصيل جديد!',
+                      style: TextStyle(
+                        color: AppColors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 24),
+                    _infoCard(
+                      Icons.storefront_outlined,
+                      'نقطة الاستلام',
+                      '${order['store_name'] ?? order['seller_name'] ?? 'المتجر'}',
+                    ),
+                    SizedBox(height: 12),
+                    _infoCard(
+                      Icons.location_on_outlined,
+                      'عنوان التوصيل',
+                      '${order['address'] ?? '—'}',
+                    ),
+                    SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _metricBox(
+                            'المسافة',
+                            '${order['distance'] ?? order['delivery_distance'] ?? '—'}',
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: _metricBox(
+                            'الأجرة',
+                            '${order['delivery_charge'] ?? order['final_total'] ?? '—'}',
+                            highlight: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 32),
+                    DriverActionButton(
+                      label: 'قبول الطلب',
+                      icon: Icons.check_circle_outline,
+                      onPressed: widget.onAccept,
+                    ),
+                    SizedBox(height: 12),
+                    TextButton(
+                      onPressed: widget.onDecline,
                       child: Text(
-                        '$_remaining',
-                        style: TextStyle(
-                          color: AppColors.orange,
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        'تجاهل',
+                        style: TextStyle(color: AppColors.greyText),
                       ),
                     ),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'طلب توصيل جديد!',
-                    style: TextStyle(
-                      color: AppColors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  SizedBox(height: 24),
-                  _infoCard(
-                    Icons.storefront_outlined,
-                    'نقطة الاستلام',
-                    '${order['store_name'] ?? order['seller_name'] ?? 'المتجر'}',
-                  ),
-                  SizedBox(height: 12),
-                  _infoCard(
-                    Icons.location_on_outlined,
-                    'عنوان التوصيل',
-                    '${order['address'] ?? '—'}',
-                  ),
-                  SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _metricBox(
-                          'المسافة',
-                          '${order['distance'] ?? order['delivery_distance'] ?? '—'}',
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: _metricBox(
-                          'الأجرة',
-                          '${order['delivery_charge'] ?? order['final_total'] ?? '—'}',
-                          highlight: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 32),
-                  DriverActionButton(
-                    label: 'قبول الطلب',
-                    icon: Icons.check_circle_outline,
-                    onPressed: widget.onAccept,
-                  ),
-                  SizedBox(height: 12),
-                  TextButton(
-                    onPressed: widget.onDecline,
-                    child: Text(
-                      'تجاهل',
-                      style: TextStyle(color: AppColors.greyText),
-                    ),
-                  ),
-                  SizedBox(height: 12),
-                ],
+                    SizedBox(height: 12),
+                  ],
+                ),
               ),
-            ),
-          );
-        }),
+            );
+          },
+        ),
       ),
     );
   }
@@ -973,7 +970,10 @@ class ProofOfDeliverySheet extends StatelessWidget {
           ),
           if (onSkip != null) ...[
             SizedBox(height: 8),
-            TextButton(onPressed: onSkip, child: Text('تخطي — متابعة بدون صورة')),
+            TextButton(
+              onPressed: onSkip,
+              child: Text('تخطي — متابعة بدون صورة'),
+            ),
           ],
         ],
       ),
@@ -1016,12 +1016,18 @@ class ContactActions extends StatelessWidget {
     required this.onCall,
     required this.onMessage,
     this.onCopy,
+    this.callLabel = 'اتصال',
+    this.messageLabel = 'مراسلة',
+    this.messageIcon = Icons.chat_bubble_outline,
   });
 
   final String phone;
   final VoidCallback onCall;
   final VoidCallback onMessage;
   final VoidCallback? onCopy;
+  final String callLabel;
+  final String messageLabel;
+  final IconData messageIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -1030,7 +1036,7 @@ class ContactActions extends StatelessWidget {
         Expanded(
           child: _ContactBtn(
             icon: Icons.phone,
-            label: 'اتصال',
+            label: callLabel,
             color: AppColors.orange,
             onTap: onCall,
           ),
@@ -1038,8 +1044,8 @@ class ContactActions extends StatelessWidget {
         SizedBox(width: 8),
         Expanded(
           child: _ContactBtn(
-            icon: Icons.chat_bubble_outline,
-            label: 'رسالة',
+            icon: messageIcon,
+            label: messageLabel,
             color: AppColors.navy,
             onTap: onMessage,
           ),
@@ -1095,10 +1101,7 @@ class _ContactBtn extends StatelessWidget {
                 SizedBox(width: 6),
                 Text(
                   label,
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(color: color, fontWeight: FontWeight.w700),
                 ),
               ],
             ],
@@ -1156,10 +1159,15 @@ class OrderListCard extends StatelessWidget {
 
   Color _statusColor(String? s) {
     final v = (s ?? '').toLowerCase();
-    if (v.contains('deliver') || v.contains('تم التسليم') || v.contains('مكتمل')) {
+    if (v.contains('deliver') ||
+        v.contains('تم التسليم') ||
+        v.contains('مكتمل')) {
       return AppColors.success;
     }
-    if (v.contains('fail') || v.contains('فشل') || v.contains('cancel') || v.contains('ملغي')) {
+    if (v.contains('fail') ||
+        v.contains('فشل') ||
+        v.contains('cancel') ||
+        v.contains('ملغي')) {
       return AppColors.error;
     }
     if (v.contains('way') || v.contains('الطريق')) return AppColors.orange;
@@ -1194,9 +1202,7 @@ class OrderListCard extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      gradient: isActive
-                          ? AppColors.orangeGradient
-                          : null,
+                      gradient: isActive ? AppColors.orangeGradient : null,
                       color: isActive ? null : AppColors.greyBg,
                       borderRadius: BorderRadius.circular(14),
                       boxShadow: isActive
@@ -1213,8 +1219,8 @@ class OrderListCard extends StatelessWidget {
                       isReturn
                           ? Icons.assignment_return_outlined
                           : isActive
-                              ? Icons.local_shipping
-                              : Icons.receipt_long,
+                          ? Icons.local_shipping
+                          : Icons.receipt_long,
                       color: isActive ? AppColors.white : AppColors.navy,
                       size: 22,
                     ),
@@ -1284,9 +1290,7 @@ class OrderListCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: sc.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: sc.withValues(alpha: 0.3),
-                        ),
+                        border: Border.all(color: sc.withValues(alpha: 0.3)),
                       ),
                       child: Text(
                         status!,
@@ -1431,8 +1435,7 @@ class OrderListCard extends StatelessWidget {
                           Icon(
                             Icons.arrow_back_ios,
                             size: 14,
-                            color:
-                                AppColors.greyText.withValues(alpha: 0.6),
+                            color: AppColors.greyText.withValues(alpha: 0.6),
                           ),
                         ],
                       ),
@@ -1448,8 +1451,7 @@ class OrderListCard extends StatelessWidget {
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.success,
                         minimumSize: const Size(64, 44),
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                       ),
                       child: quickBusy
                           ? const SizedBox(
@@ -1612,17 +1614,13 @@ class DeliveryMapView extends StatelessWidget {
         width: double.infinity,
         child: Stack(
           children: [
-            Positioned.fill(
-              child: CustomPaint(painter: _MapPainter()),
-            ),
+            Positioned.fill(child: CustomPaint(painter: _MapPainter())),
             Positioned(
               top: 16,
               right: 16,
               left: 16,
               child: Row(
-                children: [
-                  _MapPin(label: pickupLabel, isPickup: true),
-                ],
+                children: [_MapPin(label: pickupLabel, isPickup: true)],
               ),
             ),
             Positioned(
@@ -1795,10 +1793,7 @@ class DeliveryFloatingCard extends StatelessWidget {
                   color: AppColors.orange.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  Icons.storefront,
-                  color: AppColors.orange,
-                ),
+                child: Icon(Icons.storefront, color: AppColors.orange),
               ),
               SizedBox(width: 12),
               Expanded(
