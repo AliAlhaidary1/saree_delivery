@@ -39,6 +39,14 @@ class AppController extends ChangeNotifier {
   BrandConfig brand = BrandConfig.defaults;
 
   bool get isLoggedIn => token != null && token!.isNotEmpty;
+
+  // جولة التلميحات — تُعرض مرة واحدة لكل جهاز.
+  bool get appTutorialCompleted =>
+      _prefs.getBool('first_run_tutorial_v1') ?? false;
+
+  Future<void> completeAppTutorial() =>
+      _prefs.setBool('first_run_tutorial_v1', true);
+
   Map<String, dynamic> get boy =>
       J.map(user?['delivery_boy'] ?? user?['deliveryBoy']);
   int get boyStatus => J.i(boy['status'], 1);

@@ -18,6 +18,7 @@ import '../theme/app_colors.dart';
 import '../widgets/common.dart';
 import '../widgets/driver_ui.dart';
 import '../widgets/branded_skeleton.dart';
+import 'onboarding/app_tutorial.dart';
 
 /// هيدر كحلي فخم لصفحة الدخول: اسم العلامة نصاً بخط كبير
 /// وتوزيع جانبي غير متماثل + علامة البرق (نفس هوية باقي التطبيقات).
@@ -1160,6 +1161,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisExtent: 150,
                     children: [
                       KpiCard(
+                        key: AppTutorialKeys.todayOrders,
                         icon: Icons.shopping_cart_outlined,
                         label: 'طلبات اليوم',
                         value: '${home['todays_deliveries'] ?? 0}',

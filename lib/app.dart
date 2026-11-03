@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'core/app_controller.dart';
 import 'features/screens.dart';
 import 'features/akhdimni_screens.dart';
+import 'features/onboarding/app_tutorial.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 
@@ -117,175 +118,188 @@ class DeliveryShell extends StatelessWidget {
       listenable: app,
       builder: (context, _) {
         final activeOrders = app.workloadInfo.activeCount;
-        return Scaffold(
-          backgroundColor: AppColors.greyBg,
-          appBar: AppBar(
-            toolbarHeight: 66,
-            scrolledUnderElevation: 4,
-            shadowColor: AppColors.navy.withValues(alpha: 0.3),
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-            ),
-            titleSpacing: 12,
-            title: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: AppColors.white.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: _brandLogo(),
+        return AppTutorial(
+          enabled: index == 0 && !app.appTutorialCompleted,
+          child: Scaffold(
+            backgroundColor: AppColors.greyBg,
+            appBar: AppBar(
+              toolbarHeight: 66,
+              scrolledUnderElevation: 4,
+              shadowColor: AppColors.navy.withValues(alpha: 0.3),
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(20),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        app.brand.nameAr,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      Text(
-                        app.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: AppColors.white.withValues(alpha: 0.75),
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ],
+              ),
+              titleSpacing: 12,
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: AppColors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: _brandLogo(),
                   ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          app.brand.nameAr,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          app.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: AppColors.white.withValues(alpha: 0.75),
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                if (app.isOnline)
+                  Tooltip(
+                    key: index == 0 ? AppTutorialKeys.online : null,
+                    message: 'متاح لاستقبال الطلبات',
+                    child: Semantics(
+                      label: 'متاح لاستقبال الطلبات',
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4),
+                        child: OnlineDot(),
+                      ),
+                    ),
+                  ),
+                IconButton(
+                  key: index == 0 ? AppTutorialKeys.notifications : null,
+                  tooltip: 'الإشعارات',
+                  onPressed: () => context.push('/notifications'),
+                  icon: Icon(
+                    Icons.notifications_outlined,
+                    color: AppColors.white.withValues(alpha: 0.9),
+                  ),
+                ),
+                // قائمة الرأس — مقابل VerticalHeader.vue (حسابي / الإعدادات)
+                PopupMenuButton<String>(
+                  tooltip: 'القائمة',
+                  icon: Icon(
+                    Icons.more_vert,
+                    color: AppColors.white.withValues(alpha: 0.9),
+                  ),
+                  onSelected: (v) {
+                    if (v == 'account') context.go('/account');
+                    if (v == 'settings') context.push('/settings');
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'account', child: Text('حسابي')),
+                    PopupMenuItem(value: 'settings', child: Text('الإعدادات')),
+                  ],
                 ),
               ],
             ),
-            actions: [
-              if (app.isOnline)
-                Tooltip(
-                  message: 'متاح لاستقبال الطلبات',
-                  child: Semantics(
-                    label: 'متاح لاستقبال الطلبات',
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4),
-                      child: OnlineDot(),
-                    ),
+            body: child,
+            bottomNavigationBar: Container(
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+                border: Border(top: BorderSide(color: AppColors.greyBorder)),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.navy.withValues(alpha: 0.12),
+                    blurRadius: 20,
+                    offset: const Offset(0, -6),
                   ),
-                ),
-              IconButton(
-                tooltip: 'الإشعارات',
-                onPressed: () => context.push('/notifications'),
-                icon: Icon(
-                  Icons.notifications_outlined,
-                  color: AppColors.white.withValues(alpha: 0.9),
-                ),
-              ),
-              // قائمة الرأس — مقابل VerticalHeader.vue (حسابي / الإعدادات)
-              PopupMenuButton<String>(
-                tooltip: 'القائمة',
-                icon: Icon(
-                  Icons.more_vert,
-                  color: AppColors.white.withValues(alpha: 0.9),
-                ),
-                onSelected: (v) {
-                  if (v == 'account') context.go('/account');
-                  if (v == 'settings') context.push('/settings');
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'account', child: Text('حسابي')),
-                  PopupMenuItem(value: 'settings', child: Text('الإعدادات')),
                 ],
               ),
-            ],
-          ),
-          body: child,
-          bottomNavigationBar: Container(
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
-              ),
-              border: Border(top: BorderSide(color: AppColors.greyBorder)),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.navy.withValues(alpha: 0.12),
-                  blurRadius: 20,
-                  offset: const Offset(0, -6),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
                 ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
-              ),
-              child: NavigationBar(
-                height: 72,
-                selectedIndex: index,
-                elevation: 0,
-                backgroundColor: AppColors.white,
-                indicatorColor: AppColors.orange.withValues(alpha: 0.12),
-                onDestinationSelected: (i) {
-                  switch (i) {
-                    case 0:
-                      context.go('/');
-                    case 1:
-                      context.go('/orders');
-                    case 2:
-                      context.go('/wallet');
-                    case 3:
-                      context.go('/account');
-                  }
-                },
-                destinations: [
-                  NavigationDestination(
-                    icon: Icon(Icons.dashboard_outlined),
-                    selectedIcon: Icon(
-                      Icons.dashboard,
-                      color: AppColors.orange,
+                child: NavigationBar(
+                  height: 72,
+                  selectedIndex: index,
+                  elevation: 0,
+                  backgroundColor: AppColors.white,
+                  indicatorColor: AppColors.orange.withValues(alpha: 0.12),
+                  onDestinationSelected: (i) {
+                    switch (i) {
+                      case 0:
+                        context.go('/');
+                      case 1:
+                        context.go('/orders');
+                      case 2:
+                        context.go('/wallet');
+                      case 3:
+                        context.go('/account');
+                    }
+                  },
+                  destinations: [
+                    NavigationDestination(
+                      icon: const Icon(Icons.dashboard_outlined),
+                      selectedIcon: Icon(
+                        Icons.dashboard,
+                        color: AppColors.orange,
+                      ),
+                      label: 'الرئيسية',
                     ),
-                    label: 'الرئيسية',
-                  ),
-                  NavigationDestination(
-                    icon: activeOrders > 0
-                        ? Badge(
-                            label: Text('$activeOrders'),
-                            backgroundColor: AppColors.orange,
-                            child: const Icon(Icons.local_shipping_outlined),
-                          )
-                        : const Icon(Icons.local_shipping_outlined),
-                    selectedIcon: activeOrders > 0
-                        ? Badge(
-                            label: Text('$activeOrders'),
-                            backgroundColor: AppColors.orange,
-                            child: Icon(
-                              Icons.local_shipping,
-                              color: AppColors.orange,
-                            ),
-                          )
-                        : Icon(Icons.local_shipping, color: AppColors.orange),
-                    label: 'طلباتي',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.account_balance_wallet_outlined),
-                    selectedIcon: Icon(
-                      Icons.account_balance_wallet,
-                      color: AppColors.orange,
+                    NavigationDestination(
+                      key: index == 0 ? AppTutorialKeys.orders : null,
+                      icon: activeOrders > 0
+                          ? Badge(
+                              label: Text('$activeOrders'),
+                              backgroundColor: AppColors.orange,
+                              child: const Icon(Icons.local_shipping_outlined),
+                            )
+                          : const Icon(Icons.local_shipping_outlined),
+                      selectedIcon: activeOrders > 0
+                          ? Badge(
+                              label: Text('$activeOrders'),
+                              backgroundColor: AppColors.orange,
+                              child: Icon(
+                                Icons.local_shipping,
+                                color: AppColors.orange,
+                              ),
+                            )
+                          : Icon(Icons.local_shipping, color: AppColors.orange),
+                      label: 'طلباتي',
                     ),
-                    label: 'محفظتي',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.person_outline),
-                    selectedIcon: Icon(Icons.person, color: AppColors.orange),
-                    label: 'حسابي',
-                  ),
-                ],
+                    NavigationDestination(
+                      key: index == 0 ? AppTutorialKeys.wallet : null,
+                      icon: const Icon(Icons.account_balance_wallet_outlined),
+                      selectedIcon: Icon(
+                        Icons.account_balance_wallet,
+                        color: AppColors.orange,
+                      ),
+                      label: 'محفظتي',
+                    ),
+                    NavigationDestination(
+                      key: index == 0 ? AppTutorialKeys.account : null,
+                      icon: const Icon(Icons.person_outline),
+                      selectedIcon: Icon(
+                        Icons.person,
+                        color: AppColors.orange,
+                      ),
+                      label: 'حسابي',
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
