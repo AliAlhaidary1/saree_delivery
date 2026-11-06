@@ -1,32 +1,26 @@
 import 'package:firebase_core/firebase_core.dart';
 
-/// إعدادات Firebase لمشروع sreamart.
+/// إعدادات Firebase لمشروع saree-market.
 ///
 /// القيم المعبأة مشروع-عامة من إعدادات السيرفر:
-/// projectId = sreamart ، messagingSenderId = 615854672127.
+/// projectId = saree-market ، messagingSenderId = 615854672127.
 ///
-/// خطوة واحدة متبقية لتفعيل وصول الإشعارات والتطبيق مغلق:
-/// 1) افتح Firebase Console ← مشروع sreamart ← Add app ← Android.
-/// 2) سجّل package name: com.sreamart.sreamart_delivery (بدون google-services.json — الإعداد كودي).
-/// 3) انسخ قيمة appId التي تظهر بشكل 1:615854672127:android:XXXXXXXX
-///    والصقها في [androidAppId] أدناه ثم أعد بناء التطبيق.
-///
-/// بدون appId صحيح تبقى الخدمة معطّلة بأمان والتطبيق يعمل طبيعياً.
+/// تطبيق Android مسجل للحزمة com.sreamart.sreamart_delivery، والتهيئة
+/// برمجية ولا تعتمد على google-services.json.
 class FirebaseConfig {
   /// مفتاح الويب من إعدادات السيرفر — يُستخدم لتهيئة العميل.
-  static const String apiKey = 'AIzaSyCwH0a0pbRT2hqu_z-BHlJLzqYOUaDR4zM';
+  static const String apiKey = 'AIzaSyCk-izCfnQbJvzteb2Uw8twDAylfe0m2JI';
 
   /// Web appId (للباكند/الويب — لا يعمل على أندرويد).
   static const String appId = '1:615854672127:web:596f455d7a2b93c2b824ca';
 
-  /// ⬅️ الصق هنا Android appId من Firebase Console (إلزامي للإشعارات).
-  /// مثال: '1:615854672127:android:abc123def456'
-  static const String androidAppId = '';
+  /// Android appId المسجل لتطبيق المندوب.
+  static const String androidAppId = '1:615854672127:android:e046d1a56ca12e41b824ca';
 
   static const String messagingSenderId = '615854672127';
-  static const String projectId = 'sreamart';
-  static const String storageBucket = 'sreamart.firebasestorage.app';
-  static const String authDomain = 'sreamart.firebaseapp.com';
+  static const String projectId = 'saree-market';
+  static const String storageBucket = 'saree-market.firebasestorage.app';
+  static const String authDomain = 'saree-market.firebaseapp.com';
 
   /// الـ appId الفعّال على أندرويد: الخاص بالأندرويد إن وُجد.
   static String get effectiveAppId =>
